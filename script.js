@@ -59,6 +59,10 @@ document.querySelectorAll('.orientation button').forEach(button => button.addEve
   if (option) { size.value = option.value; size.dispatchEvent(new Event('change')); }
 }));
 setCanvasFormat(size.value);
+const frame = document.querySelector('#frame');
+const effect = document.querySelector('#effect');
+frame?.addEventListener('change', () => { canvas.classList.toggle('frame-light', frame.value === 'light'); canvas.classList.toggle('frame-dark', frame.value === 'dark'); });
+effect?.addEventListener('change', () => { canvas.classList.toggle('warm', effect.value === 'warm'); preview.style.filter = effect.value === 'gray' ? 'grayscale(1)' : effect.value === 'warm' ? 'sepia(.25) saturate(1.15)' : 'none'; });
 document.querySelector('.change-size').addEventListener('click', () => {
   size.scrollIntoView({behavior:'smooth', block:'center'});
   size.focus({preventScroll:true});
