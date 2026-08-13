@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CANVASO — Ваши моменты. На холсте.</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="site-header container">
+    <a class="logo" href="#top">CANVASO<span>Ваши моменты. На холсте.</span></a>
+    <button class="menu-toggle" aria-label="Открыть меню">☰</button>
+    <nav aria-label="Основная навигация">
+      <a href="#how">Как это работает</a><a href="#catalog">Каталог</a><a href="#about">О нас</a><a href="#reviews">Отзывы</a><a href="#footer">Доставка и оплата</a>
+    </nav>
+    <div class="header-actions"><button aria-label="Профиль">♙</button><button class="cart-icon" aria-label="Корзина">🛒<b>0</b></button></div>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="container hero-content">
+        <div class="hero-copy">
+          <p class="eyebrow">Печать фотографий на холсте</p>
+          <h1>Ваши фотографии —<br>в искусстве вашего дома.</h1>
+          <p class="lead">Печатаем любимые моменты на натуральном холсте<br>и доставляем готовыми к размещению.</p>
+          <a class="button dark" href="#catalog">Создать свой холст <span>→</span></a>
+          <div class="hero-benefits"><span>◷&nbsp; от 1 490 ₽</span><span>▣&nbsp; печать за 2–3 дня</span><span>▣&nbsp; доставка по России</span></div>
+        </div>
+        <div class="hero-frame"><img src="https://images.unsplash.com/photo-1511895426328-dc8714191300?auto=format&fit=crop&w=900&q=85" alt="Семейная фотография на холсте"></div>
+      </div>
+    </section>
+
+    <section class="section how" id="how"><div class="container">
+      <h2>Как это работает</h2>
+      <div class="steps">
+        <article><i>☁</i><em>01</em><h3>Загрузите фото</h3><p>Выберите фотографию<br>с телефона или компьютера.</p></article>
+        <article><i>▣</i><em>02</em><h3>Выберите формат</h3><p>40×40 · 60×40 · 80×60 ·<br>100×70 см и другие.</p></article>
+        <article><i>☷</i><em>03</em><h3>Настройте</h3><p>Обрезка, ч/б режим,<br>рамка, поля и эффекты.</p></article>
+        <article><i>◇</i><em>04</em><h3>Получите</h3><p>Мы печатаем, натягиваем<br>холст и доставляем вам.</p></article>
+      </div>
+    </div></section>
+
+    <section class="creator" id="catalog"><div class="container">
+      <h2>Создайте свой холст</h2>
+      <div class="creator-grid">
+        <form class="controls" id="canvas-form">
+          <label class="upload"><input type="file" accept="image/*" id="photo-input"><span>↥</span> Загрузить фото</label>
+          <label>Размер<select id="size"><option>60 × 40 см</option><option>40 × 40 см</option><option>80 × 60 см</option><option>100 × 70 см</option></select></label>
+          <label>Ориентация<div class="orientation"><button class="active" type="button" data-orientation="landscape">▭</button><button type="button" data-orientation="portrait">▯</button><button type="button" data-orientation="square">□</button></div></label>
+          <label>Цвет<div class="toggle"><button class="active" type="button" data-filter="color">Цветное</button><button type="button" data-filter="gray">Ч/Б</button></div></label>
+          <label>Рамка<select><option>Без рамки</option><option>Тонкая чёрная</option><option>Дубовая</option></select></label>
+          <label>Эффект<select><option>Без эффекта</option><option>Винтаж</option><option>Тёплый свет</option></select></label>
+        </form>
+        <div class="canvas-preview"><img id="preview-image" src="https://images.unsplash.com/photo-1470770841072-f978cf4d019e?auto=format&fit=crop&w=1200&q=85" alt="Предпросмотр холста"></div>
+        <aside class="price-card"><div><strong id="size-label">60 × 40 см</strong><button type="button">Изменить размер</button></div><b id="price">1 990 ₽</b><button class="button dark add-to-cart" type="button">Добавить в корзину</button><p class="ready">✓&nbsp; Готово к стене</p><small>Холст натянут на деревянный<br>подрамник и готов к размещению.</small></aside>
+      </div>
+    </div></section>
+
+    <section class="section reasons" id="about"><div class="container"><h2>Почему CANVASO</h2><div class="reason-grid">
+      <article><i>♧</i><h3>Премиальный холст</h3><p>Плотная фактурная ткань<br>и насыщенная цветопередача.</p></article>
+      <article><i>▣</i><h3>Профессиональная печать</h3><p>Высокая детализация<br>даже на больших форматах.</p></article>
+      <article><i>☀</i><h3>Без бликов</h3><p>Изображение выглядит<br>естественно при разном освещении.</p></article>
+      <article><i>⬡</i><h3>Готово к стене</h3><p>Холст натянут на деревянный<br>подрамник и уже готов к размещению.</p></article>
+    </div></div></section>
+
+    <section class="inspiration container"><div class="inspiration-photo before"><p>Из фотографии...</p></div><div class="arrow">‹ ›</div><div class="inspiration-photo after"><p>...в предмет интерьера</p></div></section>
+
+    <section class="reviews" id="reviews"><div class="container reviews-wrap"><div><h2>Отзывы наших клиентов</h2><div class="review-list">
+      <article><div class="stars">★★★★★</div><p>«Заказала фотографию с нашей свадьбы. Получилось намного красивее, чем ожидала!»</p><footer><span class="avatar a1"></span><b>Анна<small>Москва</small></b></footer></article>
+      <article><div class="stars">★★★★★</div><p>«Очень понравилось, что до печати можно посмотреть, как холст будет выглядеть на стене.»</p><footer><span class="avatar a2"></span><b>Максим<small>Санкт-Петербург</small></b></footer></article>
+    </div><div class="dots">●　○　○　○</div></div><div class="review-image"></div></div></section>
+
+    <section class="cta"><div class="container"><h2>Не храните любимые моменты<br>только в телефоне.</h2><p>Напечатайте их на холсте и создайте<br>атмосферу, которая вдохновляет каждый день.</p><a class="button light" href="#catalog">Напечатать мою фотографию <span>→</span></a></div></section>
+  </main>
+  <footer id="footer"><div class="container footer-grid"><a class="logo" href="#top">CANVASO<span>Ваши моменты. На холсте.</span></a><div><b>Каталог</b><a href="#catalog">Все форматы</a><a href="#catalog">Популярное</a><a href="#catalog">Идеи подарков</a></div><div><b>О нас</b><a href="#about">О компании</a><a href="#about">Технологии печати</a><a href="#about">Блог</a></div><div><b>Помощь</b><a href="#footer">Доставка и оплата</a><a href="#footer">Вопросы и ответы</a><a href="#footer">Контакты</a></div><div class="contacts">8 800 100-45-85<br><a href="mailto:info@canvaso.ru">info@canvaso.ru</a></div></div></footer>
+  <div class="toast" id="toast">Холст добавлен в корзину</div>
+  <script src="script.js"></script>
+</body>
+</html>
