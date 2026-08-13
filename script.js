@@ -73,16 +73,29 @@ document.querySelectorAll('.toggle button').forEach(button => button.addEventLis
 const inspirationBefore = document.querySelector('.inspiration-photo.before');
 const inspirationAfter = document.querySelector('.inspiration-photo.after');
 const inspirationExamples = [
-  ['assets/canvaso-phone-v2.svg', 'assets/canvaso-hero-v2.svg'],
-  ['assets/canvaso-photo.svg', 'assets/canvaso-interior.svg']
+  {before:'assets/canvaso-phone-v2.svg', after:'assets/canvaso-hero-v2.svg'},
+  {before:'assets/canvaso-photo.svg', after:'assets/canvaso-interior.svg'},
+  {diptych:'assets/gallery/autumn-couple-canvas.png'},
+  {diptych:'assets/gallery/family-beach-canvas.png'}
 ];
 let inspirationIndex = 0;
 const setInspirationExample = index => {
   inspirationIndex = (index + inspirationExamples.length) % inspirationExamples.length;
-  const [beforeImage, afterImage] = inspirationExamples[inspirationIndex];
-  inspirationBefore.style.backgroundImage = `url('${beforeImage}')`;
-  inspirationAfter.style.backgroundImage = `url('${afterImage}')`;
+  const example = inspirationExamples[inspirationIndex];
+  if (example.diptych) {
+    inspirationBefore.style.backgroundImage = `url('${example.diptych}')`;
+    inspirationAfter.style.backgroundImage = `url('${example.diptych}')`;
+    inspirationBefore.style.backgroundSize = inspirationAfter.style.backgroundSize = '200% 100%';
+    inspirationBefore.style.backgroundPosition = 'left center';
+    inspirationAfter.style.backgroundPosition = 'right center';
+  } else {
+    inspirationBefore.style.backgroundImage = `url('${example.before}')`;
+    inspirationAfter.style.backgroundImage = `url('${example.after}')`;
+    inspirationBefore.style.backgroundSize = inspirationAfter.style.backgroundSize = '';
+    inspirationBefore.style.backgroundPosition = inspirationAfter.style.backgroundPosition = '';
+  }
 };
+setInspirationExample(inspirationIndex);
 document.querySelector('.inspiration-prev').addEventListener('click', () => setInspirationExample(inspirationIndex - 1));
 document.querySelector('.inspiration-next').addEventListener('click', () => setInspirationExample(inspirationIndex + 1));
 const drawer = document.querySelector('#cart-drawer');
