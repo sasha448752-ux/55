@@ -145,3 +145,12 @@ body{background:var(--soft);font-size:12px}.container{width:min(1120px,calc(100%
 .inspiration-photo{min-height:0!important;background-image:var(--inspiration-image)!important;background-size:var(--inspiration-size,200% 100%)!important;background-position:var(--inspiration-position,center)!important;background-repeat:no-repeat!important}
 .inspiration-photo::before{display:none!important}
 @media(max-width:800px){.inspiration{height:auto!important;aspect-ratio:2 / 1!important}.inspiration-photo{min-height:0!important}}
+
+/* Final image rule: restore the dynamic carousel photos after the neutral fallback. */
+.inspiration-photo.before,
+.inspiration-photo.after{
+  background-image:var(--inspiration-image)!important;
+  background-size:var(--inspiration-size,200% 100%)!important;
+  background-position:var(--inspiration-position,center)!important;
+  background-repeat:no-repeat!important;
+}
