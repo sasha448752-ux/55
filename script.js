@@ -94,8 +94,9 @@ const setInspirationExample = index => {
   inspirationIndex = (index + inspirationExamples.length) % inspirationExamples.length;
   const example = inspirationExamples[inspirationIndex];
   if (example.diptych) {
-    setInspirationImage(inspirationBefore, example.diptych, '200% 100%', 'left center');
-    setInspirationImage(inspirationAfter, example.diptych, '200% 100%', 'right center');
+    // Scale by width only: each half keeps the original photo proportions.
+    setInspirationImage(inspirationBefore, example.diptych, '200% auto', 'left center');
+    setInspirationImage(inspirationAfter, example.diptych, '200% auto', 'right center');
   } else {
     setInspirationImage(inspirationBefore, example.before);
     setInspirationImage(inspirationAfter, example.after);

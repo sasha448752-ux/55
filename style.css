@@ -124,6 +124,7 @@ body{background:var(--soft);font-size:12px}.container{width:min(1120px,calc(100%
 .inspiration-photo{min-height:250px!important;background-size:cover!important;background-position:center!important}
 .inspiration-photo.before{background-size:var(--inspiration-size,cover)!important;background-position:var(--inspiration-position,center)!important}
 .inspiration-photo.after{background-size:var(--inspiration-size,cover)!important;background-position:var(--inspiration-position,center)!important}
+.inspiration-photo{background-repeat:no-repeat!important}
 .inspiration-photo:after{background:linear-gradient(90deg,rgba(24,19,14,.21),rgba(24,19,14,.02))!important}
 .inspiration p{top:14px!important;left:20px!important;font-size:12px!important;text-shadow:0 1px 7px rgba(0,0,0,.32)}
 .arrow{display:flex!important;align-items:center!important;justify-content:center!important;gap:1px!important;width:52px!important;height:52px!important;left:calc(50% - 26px)!important;top:calc(50% - 26px)!important;padding:3px!important;border:3px solid rgba(255,255,255,.92)!important;background:#fff!important;box-shadow:0 8px 20px rgba(36,26,17,.2)!important;font-size:initial!important}
