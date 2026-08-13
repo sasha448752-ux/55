@@ -19,6 +19,7 @@ const allSizes = [...size.options].map(option => option.value);
 const printDpi = 120;
 const formatFor = (width, height) => width === height ? 'square' : width > height ? 'landscape' : 'portrait';
 const requiredPixels = centimeters => Math.ceil(centimeters / 2.54 * printDpi);
+let activePhotoUrl = null;
 const showAvailableSizes = (imageWidth, imageHeight) => {
   const photoFormat = formatFor(imageWidth, imageHeight);
   // A photo can be cropped into a square, but never forced into the opposite orientation.
@@ -43,10 +44,12 @@ const loadPhoto = file => {
   if (!file) return;
   if (!['image/jpeg','image/png','image/webp'].includes(file.type)) { alert('Поддерживаются JPG, PNG и WEBP.'); return; }
   if (file.size > 10 * 1024 * 1024) { alert('Размер фотографии не должен превышать 10 МБ.'); return; }
+  if (activePhotoUrl) URL.revokeObjectURL(activePhotoUrl);
   const photoUrl = URL.createObjectURL(file);
+  activePhotoUrl = photoUrl;
   preview.src = photoUrl;
   const image = new Image();
-  image.onload = () => { showAvailableSizes(image.naturalWidth, image.naturalHeight); URL.revokeObjectURL(photoUrl); };
+  image.onload = () => { showAvailableSizes(image.naturalWidth, image.naturalHeight); };
   image.src = photoUrl;
 };
 input.addEventListener('change', event => loadPhoto(event.target.files[0]));
