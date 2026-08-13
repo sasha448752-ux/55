@@ -53,6 +53,12 @@ document.querySelectorAll('.orientation button').forEach(button => button.addEve
   if (option) { size.value = option.value; size.dispatchEvent(new Event('change')); }
 }));
 setCanvasFormat(size.value);
+document.querySelector('.change-size').addEventListener('click', () => {
+  size.scrollIntoView({behavior:'smooth', block:'center'});
+  size.focus({preventScroll:true});
+  if (typeof size.showPicker === 'function') size.showPicker();
+  else size.click();
+});
 document.querySelectorAll('.toggle button').forEach(button => button.addEventListener('click', () => { document.querySelector('.toggle .active').classList.remove('active'); button.classList.add('active'); preview.style.filter=button.dataset.filter==='gray'?'grayscale(1)':'none'; }));
 const drawer = document.querySelector('#cart-drawer');
 const backdrop = document.querySelector('#cart-backdrop');
