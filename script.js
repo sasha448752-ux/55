@@ -81,8 +81,7 @@ const inspirationBefore = document.querySelector('.inspiration-photo.before');
 const inspirationAfter = document.querySelector('.inspiration-photo.after');
 const inspirationExamples = [
   {diptych:'assets/gallery/autumn-couple-canvas.png'},
-  {diptych:'assets/gallery/family-beach-canvas.png'},
-  {before:'assets/canvaso-photo.svg', after:'assets/canvaso-interior.svg'}
+  {diptych:'assets/gallery/family-beach-canvas.png'}
 ];
 let inspirationIndex = 0;
 const setInspirationImage = (element, source, size = 'cover', position = 'center') => {
@@ -94,9 +93,9 @@ const setInspirationExample = index => {
   inspirationIndex = (index + inspirationExamples.length) % inspirationExamples.length;
   const example = inspirationExamples[inspirationIndex];
   if (example.diptych) {
-    // Scale by width only: each half keeps the original photo proportions.
-    setInspirationImage(inspirationBefore, example.diptych, '200% auto', 'left center');
-    setInspirationImage(inspirationAfter, example.diptych, '200% auto', 'right center');
+    // The source is a two-panel image. Each panel keeps its original square ratio.
+    setInspirationImage(inspirationBefore, example.diptych, '200% 100%', 'left center');
+    setInspirationImage(inspirationAfter, example.diptych, '200% 100%', 'right center');
   } else {
     setInspirationImage(inspirationBefore, example.before);
     setInspirationImage(inspirationAfter, example.after);

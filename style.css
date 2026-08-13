@@ -132,3 +132,16 @@ body{background:var(--soft);font-size:12px}.container{width:min(1120px,calc(100%
 .arrow button{display:grid!important;place-items:center!important;width:21px!important;height:42px!important;padding:0!important;border:0!important;background:transparent!important;color:#231d18!important;font:500 28px/1 Arial,sans-serif!important;cursor:pointer!important}
 .arrow button:hover,.arrow button:focus-visible{background:#f2ede7!important;border-radius:12px!important}
 @media(max-width:800px){.inspiration{height:190px!important}.inspiration-photo{min-height:190px!important}.inspiration p{top:10px!important;left:12px!important;font-size:9px!important}.arrow{width:44px!important;height:44px!important;left:calc(50% - 22px)!important;top:calc(50% - 22px)!important}.arrow button{width:18px!important;height:34px!important;font-size:24px!important}}
+
+/* Each source has two square panels. Keep every panel intact, centred, and at its natural ratio. */
+.inspiration-photo{background:#e7ded2!important;background-image:none!important;overflow:hidden!important}
+.inspiration-photo.before,.inspiration-photo.after{background-image:none!important}
+.inspiration-photo::before{content:'';position:absolute;z-index:0;top:50%;left:50%;height:100%;aspect-ratio:1;transform:translate(-50%,-50%);background-image:var(--inspiration-image)!important;background-size:200% 100%!important;background-position:var(--inspiration-position,center)!important;background-repeat:no-repeat!important}
+.inspiration-photo:after{z-index:1!important}
+.inspiration-photo p{z-index:2!important}
+
+/* The carousel has a 2:1 source image made of two full 1:1 panels. */
+.inspiration{height:auto!important;aspect-ratio:2 / 1!important;background:#e7ded2!important}
+.inspiration-photo{min-height:0!important;background-image:var(--inspiration-image)!important;background-size:var(--inspiration-size,200% 100%)!important;background-position:var(--inspiration-position,center)!important;background-repeat:no-repeat!important}
+.inspiration-photo::before{display:none!important}
+@media(max-width:800px){.inspiration{height:auto!important;aspect-ratio:2 / 1!important}.inspiration-photo{min-height:0!important}}
