@@ -77,6 +77,13 @@
   </main>
   <footer id="footer"><div class="container footer-grid"><a class="logo" href="#top">CANVASO<span>Ваши моменты. На холсте.</span></a><div><b>Каталог</b><a href="#catalog">Все форматы</a><a href="#catalog">Популярное</a><a href="#catalog">Идеи подарков</a></div><div><b>О нас</b><a href="#about">О компании</a><a href="#about">Технологии печати</a><a href="#about">Блог</a></div><div><b>Помощь</b><a href="#footer">Доставка и оплата</a><a href="#footer">Вопросы и ответы</a><a href="#footer">Контакты</a></div><div class="contacts">8 800 100-45-85<br><a href="mailto:info@canvaso.ru">info@canvaso.ru</a></div></div></footer>
   <div class="toast" id="toast">Холст добавлен в корзину</div>
+  <div class="cart-backdrop" id="cart-backdrop"></div>
+  <aside class="cart-drawer" id="cart-drawer" aria-hidden="true" aria-label="Корзина">
+    <header><strong>Корзина</strong><button type="button" class="close-cart" aria-label="Закрыть корзину">×</button></header>
+    <div class="cart-empty" id="cart-empty">В корзине пока нет товаров.</div>
+    <div class="cart-product" id="cart-product" hidden><img id="cart-image" src="" alt="Холст в корзине"><div><b>Фотохолст <span id="cart-size">60 × 40 см</span></b><small>Готов к размещению на стене</small><button type="button" class="remove-cart">Удалить</button></div><strong id="cart-price">1 990 ₽</strong></div>
+    <footer class="cart-footer" id="cart-footer" hidden><div><span>Итого</span><b id="cart-total">1 990 ₽</b></div><button type="button" class="button dark checkout">Перейти к оформлению</button></footer>
+  </aside>
   <script src="script.js"></script>
 </body>
 </html>
