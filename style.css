@@ -88,3 +88,8 @@ body{background:var(--soft);font-size:12px}.container{width:min(1120px,calc(100%
 @media (min-width: 801px) and (max-width: 999px){
   .hero{min-height:620px}.hero-content{min-height:620px}.hero-copy{padding-bottom:120px}.reasons{margin-top:-28px}.creator:before{display:none}.creator{background:#f4f0eb!important}
 }
+
+/* Review cards: prevent the global footer skin from styling customer details. */
+.review-list article footer{background:transparent!important;color:var(--ink)!important;padding:0!important;margin-top:14px!important;display:flex!important;align-items:center!important;gap:10px!important}
+.review-list article footer b{color:var(--ink)!important;font-size:11px!important;line-height:1.2!important}.review-list article footer small{color:#7e7972!important;font-size:9px!important;margin-top:2px!important}.review-list article footer .avatar{flex:0 0 28px!important;width:28px!important;height:28px!important}.review-list article{display:flex!important;flex-direction:column!important;background:#fff!important}.review-list article footer{margin-top:auto!important}.reviews-wrap{overflow:hidden;border-radius:8px}.review-image{min-height:100%!important;background-position:center!important}
+@media (min-width:1000px){.review-list article{min-height:174px!important}.reviews-wrap{min-height:280px}.review-image{min-height:280px!important}}
