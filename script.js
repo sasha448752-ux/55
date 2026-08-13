@@ -4,10 +4,24 @@ const canvas = document.querySelector('.canvas-preview');
 const size = document.querySelector('#size');
 const price = document.querySelector('#price');
 const sizeLabel = document.querySelector('#size-label');
-const prices = {'30 × 20 см':'1 190 ₽','40 × 30 см':'1 490 ₽','40 × 40 см':'1 690 ₽','50 × 40 см':'1 790 ₽','60 × 40 см':'1 990 ₽','60 × 45 см':'2 190 ₽','70 × 50 см':'2 590 ₽','80 × 60 см':'3 190 ₽','90 × 60 см':'3 590 ₽','100 × 70 см':'4 690 ₽','120 × 80 см':'5 990 ₽','140 × 100 см':'7 490 ₽'};
+const prices = {'30 × 20 см':'1 190 ₽','40 × 30 см':'1 490 ₽','40 × 40 см':'1 690 ₽','50 × 40 см':'1 790 ₽','60 × 40 см':'1 990 ₽','40 × 60 см':'1 990 ₽','60 × 45 см':'2 190 ₽','70 × 50 см':'2 590 ₽','80 × 60 см':'3 190 ₽','90 × 60 см':'3 590 ₽','100 × 70 см':'4 690 ₽','120 × 80 см':'5 990 ₽','140 × 100 см':'7 490 ₽'};
+const getDimensions = value => value.match(/\d+/g).slice(0, 2).map(Number);
+const setCanvasFormat = value => {
+  const [width, height] = getDimensions(value);
+  canvas.style.setProperty('--canvas-ratio', `${width} / ${height}`);
+  const format = width === height ? 'square' : width > height ? 'landscape' : 'portrait';
+  document.querySelectorAll('.orientation button').forEach(button => button.classList.toggle('active', button.dataset.orientation === format));
+};
 input.addEventListener('change', e => { const file=e.target.files[0]; if(file) preview.src=URL.createObjectURL(file); });
-size.addEventListener('change', e => { sizeLabel.textContent=e.target.value; price.textContent=prices[e.target.value]; });
-document.querySelectorAll('.orientation button').forEach(button => button.addEventListener('click', () => { document.querySelector('.orientation .active').classList.remove('active'); button.classList.add('active'); canvas.classList.remove('portrait','square'); if(button.dataset.orientation !== 'landscape') canvas.classList.add(button.dataset.orientation); }));
+size.addEventListener('change', e => { sizeLabel.textContent=e.target.value; price.textContent=prices[e.target.value]; setCanvasFormat(e.target.value); });
+document.querySelectorAll('.orientation button').forEach(button => button.addEventListener('click', () => {
+  const option = [...size.options].find(item => {
+    const [width, height] = getDimensions(item.value);
+    return button.dataset.orientation === 'square' ? width === height : button.dataset.orientation === 'portrait' ? height > width : width > height;
+  });
+  if (option) { size.value = option.value; size.dispatchEvent(new Event('change')); }
+}));
+setCanvasFormat(size.value);
 document.querySelectorAll('.toggle button').forEach(button => button.addEventListener('click', () => { document.querySelector('.toggle .active').classList.remove('active'); button.classList.add('active'); preview.style.filter=button.dataset.filter==='gray'?'grayscale(1)':'none'; }));
 const drawer = document.querySelector('#cart-drawer');
 const backdrop = document.querySelector('#cart-backdrop');
