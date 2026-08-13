@@ -66,3 +66,38 @@ body{background:var(--soft);font-size:12px}.container{width:min(1120px,calc(100%
 .arrow button{width:100%;height:100%;border:0;background:transparent;color:#1c1b19;font:500 24px/1 Arial,sans-serif;cursor:pointer;border-radius:50%}
 .arrow button:hover,.arrow button:focus-visible{background:#f1efec;outline:none}
 .inspiration-photo{transition:background-image .2s ease,opacity .2s ease}
+/* Desktop repair: restore a readable CANVASO layout at normal computer sizes. */
+@media (min-width: 1000px){
+  .container{width:min(1280px,calc(100% - 96px))}
+  body{font-size:15px}
+  .site-header{height:90px}.logo{font-size:25px}.logo span{font-size:8px;margin-top:9px}.site-header nav{gap:42px;margin-left:110px}.site-header nav a{font-size:11px}.header-actions button{font-size:21px}
+  .hero{min-height:610px}.hero-content{min-height:610px}.hero-copy{padding-top:150px;max-width:590px}.hero .eyebrow{font-size:10px}.hero h1{font-size:50px;line-height:1.04;margin:16px 0 21px}.lead{font-size:14px}.button{font-size:13px;padding:16px 25px}.hero .button{margin-top:15px}.hero-benefits{font-size:10px;gap:31px;margin-top:36px}
+  .reasons{width:min(1175px,calc(100% - 96px));margin-top:-58px;padding:28px 0 24px}.reasons .reason-grid{padding:0 43px}.reason-grid i{width:62px;height:62px;font-size:24px;margin-bottom:10px}.reason-grid h3{font-size:13px;margin:9px 0 5px}.reason-grid p{font-size:10px}
+  .section.how{padding:37px 0 44px}.how h2{font-size:20px}.steps{margin-top:27px}.steps i{width:61px;height:61px;font-size:25px;margin-bottom:10px}.steps em{font-size:11px}.steps h3{font-size:13px;margin:9px 0 5px}.steps p{font-size:10px}.steps article:not(:last-child):after{top:27px}
+  .creator{background:#f4f0eb!important;padding:42px 0}.creator h2{font-size:25px;margin-bottom:24px}.creator-grid{grid-template-columns:270px minmax(460px,1fr) 270px;gap:48px;align-items:center}.controls{padding:15px}.controls label{font-size:10px;margin-bottom:13px}.controls select{padding:9px;font-size:11px}.upload{min-height:92px;padding:13px!important}.upload-icon{font-size:20px}.upload small{font-size:8px}.toggle button,.orientation button{padding:8px 13px;font-size:10px}.canvas-stage{width:100%}.canvas-preview{width:100%;max-width:570px;padding:8px}.preview-badge{font-size:9px;top:14px;left:16px}.preview-caption{font-size:9px;margin-top:9px}.price-card{padding:21px}.price-card strong{font-size:16px}.price-card>b{font-size:28px;margin:27px 0}.price-card .button{padding:14px}.ready{font-size:12px;margin:22px 0 8px}.price-card small{font-size:10px}
+  .inspiration{height:260px}.inspiration p{font-size:13px;left:25px}.arrow{width:46px;height:46px;left:calc(50% - 23px);top:calc(50% - 23px);font-size:22px}.reviews h2{font-size:20px;margin:26px 0 19px}.review-list article{padding:19px;min-height:150px}.review-list p{font-size:10px;min-height:46px}.stars{font-size:15px}.review-list b,.review-list small{font-size:10px}.avatar{width:28px;height:28px}.dots{font-size:11px;margin:18px}.cta{padding:55px 0}.cta h2{font-size:34px}.cta p{font-size:12px}.cta .button{font-size:11px;padding:13px 21px}footer{padding:34px 0}.footer-grid b,.contacts{font-size:10px}.footer-grid>div a{font-size:9px}
+  .creator:before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,#f4f0eb 0%,#f4f0eb 66%,rgba(244,240,235,.58) 76%,rgba(244,240,235,.3)),url('assets/canvaso-hero-v2.svg') right center/auto 100% no-repeat;opacity:.76;pointer-events:none}.creator{position:relative}.creator .container{position:relative;z-index:1}
+}
+
+/* Final overlap audit — keep every content block independently readable. */
+@media (min-width: 1000px){
+  .hero{min-height:650px}.hero-content{min-height:650px}.hero-copy{padding-top:150px;padding-bottom:118px}
+  .reasons{position:relative;margin:-42px auto 0;z-index:3}
+  .hero-benefits{position:relative;z-index:4;margin-bottom:0}
+  .how{position:relative;z-index:2;padding-top:44px!important}
+  .creator:before{display:none!important}.creator{background:#f4f0eb!important}
+  .creator-grid{align-items:start}.canvas-stage{padding-top:4px}.price-card{margin-top:34px}
+  .inspiration{margin-top:20px}.reviews{position:relative;z-index:2}
+}
+@media (min-width: 801px) and (max-width: 999px){
+  .hero{min-height:620px}.hero-content{min-height:620px}.hero-copy{padding-bottom:120px}.reasons{margin-top:-28px}.creator:before{display:none}.creator{background:#f4f0eb!important}
+}
+
+/* Review cards: prevent the global footer skin from styling customer details. */
+.review-list article footer{background:transparent!important;color:var(--ink)!important;padding:0!important;margin-top:14px!important;display:flex!important;align-items:center!important;gap:10px!important}
+.review-list article footer b{color:var(--ink)!important;font-size:11px!important;line-height:1.2!important}.review-list article footer small{color:#7e7972!important;font-size:9px!important;margin-top:2px!important}.review-list article footer .avatar{flex:0 0 28px!important;width:28px!important;height:28px!important}.review-list article{display:flex!important;flex-direction:column!important;background:#fff!important}.review-list article footer{margin-top:auto!important}.reviews-wrap{overflow:hidden;border-radius:8px}.review-image{min-height:100%!important;background-position:center!important}
+@media (min-width:1000px){.review-list article{min-height:174px!important}.reviews-wrap{min-height:280px}.review-image{min-height:280px!important}}
+
+/* Reviews only: remove the decorative side image and use the full line for feedback. */
+.reviews-wrap{display:block!important}.reviews-wrap>div:first-child{width:100%!important}.review-image{display:none!important}.reviews h2{text-align:center!important}.review-list{justify-content:center!important}.review-list article{flex:1 1 0!important;max-width:none!important}
+@media(max-width:800px){.review-list article{max-width:100%!important}}
