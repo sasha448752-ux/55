@@ -158,3 +158,42 @@ body{background:var(--soft);font-size:12px}.container{width:min(1120px,calc(100%
 .account-link{color:var(--ink);font-size:11px;font-weight:700;text-decoration:none;white-space:nowrap}
 .account-link:hover,.account-link:focus-visible{text-decoration:underline}
 @media(max-width:800px){.account-link{font-size:10px}}
+
+/* Customer reviews carousel. Three cards remain visible on desktop and one on mobile. */
+.reviews .review-list{
+  display:flex!important;
+  flex-wrap:nowrap!important;
+  justify-content:flex-start!important;
+  gap:16px!important;
+  transition:transform .5s ease!important;
+  will-change:transform;
+}
+.reviews .review-list article{
+  flex:0 0 calc((100% - 32px) / 3)!important;
+  width:calc((100% - 32px) / 3)!important;
+  max-width:none!important;
+}
+.reviews .dots{
+  display:flex!important;
+  justify-content:center;
+  align-items:center;
+  gap:8px;
+  min-height:22px;
+  margin-top:16px;
+}
+.reviews .dots button{
+  width:7px;
+  height:7px;
+  padding:0;
+  border:1px solid #9b9389;
+  border-radius:50%;
+  background:transparent;
+  cursor:pointer;
+  transition:transform .2s ease,background .2s ease;
+}
+.reviews .dots button.active{background:#1f1b18;border-color:#1f1b18;transform:scale(1.15)}
+.reviews .dots button:focus-visible{outline:2px solid #8e694e;outline-offset:3px}
+@media(max-width:800px){
+  .reviews .review-list article{flex-basis:100%!important;width:100%!important}
+}
+@media(prefers-reduced-motion:reduce){.reviews .review-list{transition:none!important}}

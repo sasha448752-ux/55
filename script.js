@@ -203,3 +203,64 @@ if (reviews && reviews.children.length === 2) {
   review.innerHTML = '<div class="stars">★★★★★</div><p>«Качество печати отличное! Цвета насыщенные, холст выглядит супер.»</p><footer><span class="avatar a1"></span><b>Ирина<small>Казань</small></b></footer>';
   reviews.appendChild(review);
 }
+
+// One more card makes the review carousel useful on both desktop and mobile.
+if (reviews && reviews.children.length === 3) {
+  const review = document.createElement('article');
+  review.innerHTML = '<div class="stars">★★★★★</div><p>«Заказ приехал быстро, а результат превзошёл все ожидания.»</p><footer><span class="avatar a2"></span><b>Ольга<small>Екатеринбург</small></b></footer>';
+  reviews.appendChild(review);
+}
+
+const reviewsSection = document.querySelector('.reviews');
+const reviewDots = document.querySelector('.reviews .dots');
+
+if (reviewsSection && reviews && reviewDots && reviews.children.length) {
+  let reviewIndex = 0;
+  let reviewTimer;
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const visibleReviews = () => window.matchMedia('(max-width: 800px)').matches ? 1 : 3;
+  const reviewSlideCount = () => Math.max(1, reviews.children.length - visibleReviews() + 1);
+
+  const stopReviewAutoplay = () => {
+    window.clearInterval(reviewTimer);
+    reviewTimer = undefined;
+  };
+
+  const startReviewAutoplay = () => {
+    stopReviewAutoplay();
+    if (!reducedMotion.matches && reviewSlideCount() > 1) {
+      reviewTimer = window.setInterval(() => showReview(reviewIndex + 1), 5000);
+    }
+  };
+
+  const showReview = (index) => {
+    const slideCount = reviewSlideCount();
+    reviewIndex = (index + slideCount) % slideCount;
+    const firstCard = reviews.firstElementChild;
+    const gap = Number.parseFloat(window.getComputedStyle(reviews).gap) || 0;
+    const cardWidth = firstCard.getBoundingClientRect().width;
+    reviews.style.transform = `translateX(-${reviewIndex * (cardWidth + gap)}px)`;
+
+    reviewDots.replaceChildren(...Array.from({ length: slideCount }, (_, dotIndex) => {
+      const dot = document.createElement('button');
+      dot.type = 'button';
+      dot.className = dotIndex === reviewIndex ? 'active' : '';
+      dot.setAttribute('aria-label', `Показать отзывы ${dotIndex + 1}`);
+      dot.setAttribute('aria-current', String(dotIndex === reviewIndex));
+      dot.addEventListener('click', () => {
+        showReview(dotIndex);
+        startReviewAutoplay();
+      });
+      return dot;
+    }));
+  };
+
+  reviewsSection.addEventListener('mouseenter', stopReviewAutoplay);
+  reviewsSection.addEventListener('mouseleave', startReviewAutoplay);
+  document.addEventListener('visibilitychange', () => document.hidden ? stopReviewAutoplay() : startReviewAutoplay());
+  window.addEventListener('resize', () => showReview(reviewIndex));
+  reducedMotion.addEventListener?.('change', () => startReviewAutoplay());
+
+  showReview(0);
+  startReviewAutoplay();
+}
