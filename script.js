@@ -80,10 +80,9 @@ document.querySelectorAll('.toggle button').forEach(button => button.addEventLis
 const inspirationBefore = document.querySelector('.inspiration-photo.before');
 const inspirationAfter = document.querySelector('.inspiration-photo.after');
 const inspirationExamples = [
-  {before:'assets/canvaso-phone-v2.svg', after:'assets/canvaso-hero-v2.svg'},
-  {before:'assets/canvaso-photo.svg', after:'assets/canvaso-interior.svg'},
   {diptych:'assets/gallery/autumn-couple-canvas.png'},
-  {diptych:'assets/gallery/family-beach-canvas.png'}
+  {diptych:'assets/gallery/family-beach-canvas.png'},
+  {before:'assets/canvaso-photo.svg', after:'assets/canvaso-interior.svg'}
 ];
 let inspirationIndex = 0;
 const setInspirationImage = (element, source, size = 'cover', position = 'center') => {

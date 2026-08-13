@@ -118,3 +118,16 @@ body{background:var(--soft);font-size:12px}.container{width:min(1120px,calc(100%
 .inspiration-photo:first-child{border-right:1px solid rgba(255,255,255,.45)}.inspiration p{top:16px!important;left:20px!important;font-size:12px!important;text-shadow:0 1px 8px rgba(0,0,0,.38)}
 .arrow{width:50px!important;height:50px!important;left:calc(50% - 25px)!important;top:calc(50% - 25px)!important;border:4px solid rgba(255,255,255,.85)!important;box-shadow:0 7px 18px rgba(25,17,10,.18)!important;font-size:0!important}.arrow:after{content:'↔';font-size:19px!important;font-weight:700;color:#27221e}
 @media(max-width:800px){.inspiration{height:195px!important;grid-template-columns:1fr 1fr!important}.inspiration-photo{min-height:195px!important}.inspiration p{font-size:9px!important;left:12px!important;top:10px!important}.arrow{width:40px!important;height:40px!important;left:calc(50% - 20px)!important;top:calc(50% - 20px)!important}.arrow:after{font-size:16px!important}}
+
+/* Carousel polish: preserve the full before/after composition and show two clear controls. */
+.inspiration{height:250px!important;background:#e7ded2!important}
+.inspiration-photo{min-height:250px!important;background-size:cover!important;background-position:center!important}
+.inspiration-photo.before{background-size:var(--inspiration-size,cover)!important;background-position:var(--inspiration-position,center)!important}
+.inspiration-photo.after{background-size:var(--inspiration-size,cover)!important;background-position:var(--inspiration-position,center)!important}
+.inspiration-photo:after{background:linear-gradient(90deg,rgba(24,19,14,.21),rgba(24,19,14,.02))!important}
+.inspiration p{top:14px!important;left:20px!important;font-size:12px!important;text-shadow:0 1px 7px rgba(0,0,0,.32)}
+.arrow{display:flex!important;align-items:center!important;justify-content:center!important;gap:1px!important;width:52px!important;height:52px!important;left:calc(50% - 26px)!important;top:calc(50% - 26px)!important;padding:3px!important;border:3px solid rgba(255,255,255,.92)!important;background:#fff!important;box-shadow:0 8px 20px rgba(36,26,17,.2)!important;font-size:initial!important}
+.arrow:after{display:none!important}
+.arrow button{display:grid!important;place-items:center!important;width:21px!important;height:42px!important;padding:0!important;border:0!important;background:transparent!important;color:#231d18!important;font:500 28px/1 Arial,sans-serif!important;cursor:pointer!important}
+.arrow button:hover,.arrow button:focus-visible{background:#f2ede7!important;border-radius:12px!important}
+@media(max-width:800px){.inspiration{height:190px!important}.inspiration-photo{min-height:190px!important}.inspiration p{top:10px!important;left:12px!important;font-size:9px!important}.arrow{width:44px!important;height:44px!important;left:calc(50% - 22px)!important;top:calc(50% - 22px)!important}.arrow button{width:18px!important;height:34px!important;font-size:24px!important}}
