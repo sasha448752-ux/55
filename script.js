@@ -6,6 +6,8 @@ const price = document.querySelector('#price');
 const sizeLabel = document.querySelector('#size-label');
 const prices = {'30 × 20 см':'1 190 ₽','20 × 30 см':'1 190 ₽','40 × 30 см':'1 490 ₽','30 × 40 см':'1 490 ₽','40 × 40 см':'1 690 ₽','50 × 40 см':'1 790 ₽','40 × 50 см':'1 790 ₽','60 × 40 см':'1 990 ₽','40 × 60 см':'1 990 ₽','60 × 45 см':'2 190 ₽','45 × 60 см':'2 190 ₽','70 × 50 см':'2 590 ₽','50 × 70 см':'2 590 ₽','80 × 60 см':'3 190 ₽','60 × 80 см':'3 190 ₽','90 × 60 см':'3 590 ₽','60 × 90 см':'3 590 ₽','100 × 70 см':'4 690 ₽','70 × 100 см':'4 690 ₽','120 × 80 см':'5 990 ₽','80 × 120 см':'5 990 ₽','140 × 100 см':'7 490 ₽','100 × 140 см':'7 490 ₽'};
 const getDimensions = value => value.match(/\d+/g).slice(0, 2).map(Number);
+const priceByDimensions = {'30x20':'1 190 ₽','20x30':'1 190 ₽','40x30':'1 490 ₽','30x40':'1 490 ₽','40x40':'1 690 ₽','50x40':'1 790 ₽','40x50':'1 790 ₽','60x40':'1 990 ₽','40x60':'1 990 ₽','60x45':'2 190 ₽','45x60':'2 190 ₽','70x50':'2 590 ₽','50x70':'2 590 ₽','80x60':'3 190 ₽','60x80':'3 190 ₽','90x60':'3 590 ₽','60x90':'3 590 ₽','100x70':'4 690 ₽','70x100':'4 690 ₽','120x80':'5 990 ₽','80x120':'5 990 ₽','140x100':'7 490 ₽','100x140':'7 490 ₽'};
+const priceFor = value => priceByDimensions[`${getDimensions(value).join('x')}`] || '—';
 const setCanvasFormat = value => {
   const [width, height] = getDimensions(value);
   canvas.style.setProperty('--canvas-ratio', `${width} / ${height}`);
@@ -18,8 +20,13 @@ const printDpi = 120;
 const formatFor = (width, height) => width === height ? 'square' : width > height ? 'landscape' : 'portrait';
 const requiredPixels = centimeters => Math.ceil(centimeters / 2.54 * printDpi);
 const showAvailableSizes = (imageWidth, imageHeight) => {
-  // Keep every format selectable. The image resolution is shown as guidance, not a restriction.
-  const available = [...allSizes];
+  const photoFormat = formatFor(imageWidth, imageHeight);
+  // A photo can be cropped into a square, but never forced into the opposite orientation.
+  const available = allSizes.filter(value => {
+    const [width, height] = getDimensions(value);
+    const canvasFormat = formatFor(width, height);
+    return canvasFormat === photoFormat || canvasFormat === 'square';
+  });
   size.replaceChildren(...available.map(value => new Option(value, value)));
   if (!available.length) {
     size.disabled = true;
@@ -47,7 +54,7 @@ const uploadZone = document.querySelector('#upload-zone');
 ['dragenter','dragover'].forEach(type => uploadZone.addEventListener(type, event => { event.preventDefault(); uploadZone.classList.add('dragging'); }));
 ['dragleave','drop'].forEach(type => uploadZone.addEventListener(type, event => { event.preventDefault(); uploadZone.classList.remove('dragging'); }));
 uploadZone.addEventListener('drop', event => { const file = event.dataTransfer.files[0]; if (!file) return; const transfer = new DataTransfer(); transfer.items.add(file); input.files = transfer.files; loadPhoto(file); });
-size.addEventListener('change', e => { sizeLabel.textContent=e.target.value; price.textContent=prices[e.target.value]; setCanvasFormat(e.target.value); });
+size.addEventListener('change', e => { sizeLabel.textContent=e.target.value; price.textContent=priceFor(e.target.value); setCanvasFormat(e.target.value); });
 document.querySelectorAll('.orientation button').forEach(button => button.addEventListener('click', () => {
   const option = [...size.options].find(item => {
     const [width, height] = getDimensions(item.value);
