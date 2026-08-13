@@ -70,6 +70,21 @@ document.querySelector('.change-size').addEventListener('click', () => {
   else size.click();
 });
 document.querySelectorAll('.toggle button').forEach(button => button.addEventListener('click', () => { document.querySelector('.toggle .active').classList.remove('active'); button.classList.add('active'); preview.style.filter=button.dataset.filter==='gray'?'grayscale(1)':'none'; }));
+const inspirationBefore = document.querySelector('.inspiration-photo.before');
+const inspirationAfter = document.querySelector('.inspiration-photo.after');
+const inspirationExamples = [
+  ['assets/canvaso-phone-v2.svg', 'assets/canvaso-hero-v2.svg'],
+  ['assets/canvaso-photo.svg', 'assets/canvaso-interior.svg']
+];
+let inspirationIndex = 0;
+const setInspirationExample = index => {
+  inspirationIndex = (index + inspirationExamples.length) % inspirationExamples.length;
+  const [beforeImage, afterImage] = inspirationExamples[inspirationIndex];
+  inspirationBefore.style.backgroundImage = `url('${beforeImage}')`;
+  inspirationAfter.style.backgroundImage = `url('${afterImage}')`;
+};
+document.querySelector('.inspiration-prev').addEventListener('click', () => setInspirationExample(inspirationIndex - 1));
+document.querySelector('.inspiration-next').addEventListener('click', () => setInspirationExample(inspirationIndex + 1));
 const drawer = document.querySelector('#cart-drawer');
 const backdrop = document.querySelector('#cart-backdrop');
 const cartProduct = document.querySelector('#cart-product');
