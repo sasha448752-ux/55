@@ -180,6 +180,7 @@ document.querySelector('#checkout-form').addEventListener('submit', async event 
   const submit = event.currentTarget.querySelector('[type="submit"]'); submit.disabled=true; checkoutStatus.textContent='Отправляем заказ…';
   if (!window.supabase) { checkoutStatus.textContent='Сервис заказов временно недоступен. Попробуйте позже.'; submit.disabled=false; return; }
   const supabaseClient = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+  const {data:{user}} = await supabaseClient.auth.getUser();
   const form = new FormData(event.currentTarget);
   for (const item of cart) {
     const orderId = crypto.randomUUID();
@@ -187,7 +188,7 @@ document.querySelector('#checkout-form').addEventListener('submit', async event 
     const photoPath = `${orderId}/${safeName}`;
     const {error:uploadError} = await supabaseClient.storage.from('order-photos').upload(photoPath,item.file,{contentType:item.file.type,upsert:false});
     if(uploadError){ checkoutStatus.textContent=uploadError.message; submit.disabled=false; return; }
-    const order = {id:orderId,full_name:form.get('full_name'),phone:form.get('phone'),email:form.get('email')||null,address:form.get('address'),comment:form.get('comment')||null,canvas_size:item.size,price_kop:item.price*100,photo_path:photoPath};
+    const order = {id:orderId,customer_id:user?.id||null,full_name:form.get('full_name'),phone:form.get('phone'),email:form.get('email')||user?.email||null,address:form.get('address'),comment:form.get('comment')||null,canvas_size:item.size,price_kop:item.price*100,photo_path:photoPath};
     const {error:orderError} = await supabaseClient.from('orders').insert(order);
     if(orderError){ checkoutStatus.textContent=orderError.message; submit.disabled=false; return; }
   }

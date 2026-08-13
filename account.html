@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Личный кабинет — CANVASO</title>
+  <link rel="stylesheet" href="account.css">
+</head>
+<body>
+  <main class="account-shell">
+    <a class="brand" href="index.html">CANVASO<span>Ваши моменты. На холсте.</span></a>
+
+    <section class="auth-card" id="auth-panel">
+      <h1>Личный кабинет</h1>
+      <p>Войдите, чтобы смотреть статус своих заказов.</p>
+      <form id="auth-form">
+        <label>Email<input name="email" type="email" autocomplete="email" required></label>
+        <label>Пароль<input name="password" type="password" autocomplete="current-password" minlength="6" required></label>
+        <p class="form-message" id="auth-message" role="status"></p>
+        <button type="submit" id="login-button">Войти</button>
+        <button class="secondary" type="button" id="register-button">Создать аккаунт</button>
+      </form>
+    </section>
+
+    <section class="orders-panel" id="customer-panel" hidden>
+      <header>
+        <div><h1>Мои заказы</h1><p id="customer-email"></p></div>
+        <button class="secondary" type="button" id="logout-button">Выйти</button>
+      </header>
+      <div class="orders" id="customer-orders" aria-live="polite"></div>
+    </section>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="account.js"></script>
+</body>
+</html>
