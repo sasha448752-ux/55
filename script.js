@@ -18,11 +18,8 @@ const printDpi = 120;
 const formatFor = (width, height) => width === height ? 'square' : width > height ? 'landscape' : 'portrait';
 const requiredPixels = centimeters => Math.ceil(centimeters / 2.54 * printDpi);
 const showAvailableSizes = (imageWidth, imageHeight) => {
-  const photoFormat = formatFor(imageWidth, imageHeight);
-  const available = allSizes.filter(value => {
-    const [width, height] = getDimensions(value);
-    return formatFor(width, height) === photoFormat && requiredPixels(width) <= imageWidth && requiredPixels(height) <= imageHeight;
-  });
+  // Keep every format selectable. The image resolution is shown as guidance, not a restriction.
+  const available = [...allSizes];
   size.replaceChildren(...available.map(value => new Option(value, value)));
   if (!available.length) {
     size.disabled = true;
