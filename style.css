@@ -3,6 +3,7 @@
 
 /* Layout follows the supplied design. Existing image URLs are intentionally unchanged. */
 .canvas-preview img{aspect-ratio:var(--canvas-ratio,1.5)!important;transition:aspect-ratio .25s,filter .25s}
+.size-hint{display:block;color:#777;font-size:9px;line-height:1.35;margin-top:6px}
 main{display:flex;flex-direction:column}.hero{order:1}.reasons{order:2}.how{order:3}.creator{order:4}.inspiration{order:5}.reviews{order:6}.cta{order:7}
 .reasons{position:relative;z-index:1;margin:-2px auto 0;width:min(1178px,calc(100% - 80px));padding:22px 0 18px;border-radius:9px;background:rgba(255,255,255,.96);box-shadow:0 12px 35px rgba(87,69,51,.08)}
 .reasons h2{display:none}.reasons .container{width:100%}.reasons .reason-grid{margin:0;padding:0 38px}.how{padding-top:25px}.how h2{font-family:Manrope,Arial,sans-serif;font-size:18px;font-weight:700}.creator{padding-top:38px}.creator h2{font-family:Manrope,Arial,sans-serif;font-size:22px;font-weight:700}.reviews h2{font-family:Manrope,Arial,sans-serif;font-size:18px;font-weight:700;text-align:center}.hero .eyebrow:before{content:'★';color:#f5aa16;font-size:16px;margin-right:10px;vertical-align:-1px}.hero .eyebrow{letter-spacing:.15px}.hero h1{font-family:Manrope,Arial,sans-serif;font-weight:700;letter-spacing:-2px}

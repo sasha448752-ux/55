@@ -12,7 +12,38 @@ const setCanvasFormat = value => {
   const format = width === height ? 'square' : width > height ? 'landscape' : 'portrait';
   document.querySelectorAll('.orientation button').forEach(button => button.classList.toggle('active', button.dataset.orientation === format));
 };
-input.addEventListener('change', e => { const file=e.target.files[0]; if(file) preview.src=URL.createObjectURL(file); });
+const sizeHint = document.querySelector('#size-hint');
+const allSizes = [...size.options].map(option => option.value);
+const printDpi = 120;
+const formatFor = (width, height) => width === height ? 'square' : width > height ? 'landscape' : 'portrait';
+const requiredPixels = centimeters => Math.ceil(centimeters / 2.54 * printDpi);
+const showAvailableSizes = (imageWidth, imageHeight) => {
+  const photoFormat = formatFor(imageWidth, imageHeight);
+  const available = allSizes.filter(value => {
+    const [width, height] = getDimensions(value);
+    return formatFor(width, height) === photoFormat && requiredPixels(width) <= imageWidth && requiredPixels(height) <= imageHeight;
+  });
+  size.replaceChildren(...available.map(value => new Option(value, value)));
+  if (!available.length) {
+    size.disabled = true;
+    sizeHint.textContent = 'Для печати хорошего качества нужен файл большего разрешения.';
+    price.textContent = '—';
+    return;
+  }
+  size.disabled = false;
+  size.value = available.includes(size.value) ? size.value : available[0];
+  sizeHint.textContent = `Подходящие размеры по качеству для фото ${imageWidth} × ${imageHeight} px.`;
+  size.dispatchEvent(new Event('change'));
+};
+input.addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const photoUrl = URL.createObjectURL(file);
+  preview.src = photoUrl;
+  const image = new Image();
+  image.onload = () => { showAvailableSizes(image.naturalWidth, image.naturalHeight); };
+  image.src = photoUrl;
+});
 size.addEventListener('change', e => { sizeLabel.textContent=e.target.value; price.textContent=prices[e.target.value]; setCanvasFormat(e.target.value); });
 document.querySelectorAll('.orientation button').forEach(button => button.addEventListener('click', () => {
   const option = [...size.options].find(item => {
