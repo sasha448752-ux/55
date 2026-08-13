@@ -79,20 +79,20 @@ const inspirationExamples = [
   {diptych:'assets/gallery/family-beach-canvas.png'}
 ];
 let inspirationIndex = 0;
+const setInspirationImage = (element, source, size = 'cover', position = 'center') => {
+  element.style.setProperty('--inspiration-image', `url("${source}")`);
+  element.style.setProperty('--inspiration-size', size);
+  element.style.setProperty('--inspiration-position', position);
+};
 const setInspirationExample = index => {
   inspirationIndex = (index + inspirationExamples.length) % inspirationExamples.length;
   const example = inspirationExamples[inspirationIndex];
   if (example.diptych) {
-    inspirationBefore.style.backgroundImage = `url('${example.diptych}')`;
-    inspirationAfter.style.backgroundImage = `url('${example.diptych}')`;
-    inspirationBefore.style.backgroundSize = inspirationAfter.style.backgroundSize = '200% 100%';
-    inspirationBefore.style.backgroundPosition = 'left center';
-    inspirationAfter.style.backgroundPosition = 'right center';
+    setInspirationImage(inspirationBefore, example.diptych, '200% 100%', 'left center');
+    setInspirationImage(inspirationAfter, example.diptych, '200% 100%', 'right center');
   } else {
-    inspirationBefore.style.backgroundImage = `url('${example.before}')`;
-    inspirationAfter.style.backgroundImage = `url('${example.after}')`;
-    inspirationBefore.style.backgroundSize = inspirationAfter.style.backgroundSize = '';
-    inspirationBefore.style.backgroundPosition = inspirationAfter.style.backgroundPosition = '';
+    setInspirationImage(inspirationBefore, example.before);
+    setInspirationImage(inspirationAfter, example.after);
   }
 };
 setInspirationExample(inspirationIndex);
