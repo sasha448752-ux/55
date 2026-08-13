@@ -93,3 +93,7 @@ body{background:var(--soft);font-size:12px}.container{width:min(1120px,calc(100%
 .review-list article footer{background:transparent!important;color:var(--ink)!important;padding:0!important;margin-top:14px!important;display:flex!important;align-items:center!important;gap:10px!important}
 .review-list article footer b{color:var(--ink)!important;font-size:11px!important;line-height:1.2!important}.review-list article footer small{color:#7e7972!important;font-size:9px!important;margin-top:2px!important}.review-list article footer .avatar{flex:0 0 28px!important;width:28px!important;height:28px!important}.review-list article{display:flex!important;flex-direction:column!important;background:#fff!important}.review-list article footer{margin-top:auto!important}.reviews-wrap{overflow:hidden;border-radius:8px}.review-image{min-height:100%!important;background-position:center!important}
 @media (min-width:1000px){.review-list article{min-height:174px!important}.reviews-wrap{min-height:280px}.review-image{min-height:280px!important}}
+
+/* Reviews only: remove the decorative side image and use the full line for feedback. */
+.reviews-wrap{display:block!important}.reviews-wrap>div:first-child{width:100%!important}.review-image{display:none!important}.reviews h2{text-align:center!important}.review-list{justify-content:center!important}.review-list article{flex:1 1 0!important;max-width:none!important}
+@media(max-width:800px){.review-list article{max-width:100%!important}}
