@@ -44,7 +44,7 @@ const loadPhoto = file => {
   if (!file) return;
   if (!['image/jpeg','image/png','image/webp'].includes(file.type)) { alert('Поддерживаются JPG, PNG и WEBP.'); return; }
   if (file.size > 10 * 1024 * 1024) { alert('Размер фотографии не должен превышать 10 МБ.'); return; }
-  if (activePhotoUrl) URL.revokeObjectURL(activePhotoUrl);
+  if (activePhotoUrl && !cartPhotoUrls.has(activePhotoUrl)) URL.revokeObjectURL(activePhotoUrl);
   const photoUrl = URL.createObjectURL(file);
   activePhotoUrl = photoUrl;
   preview.src = photoUrl;
@@ -107,21 +107,67 @@ document.querySelector('.inspiration-prev').addEventListener('click', () => setI
 document.querySelector('.inspiration-next').addEventListener('click', () => setInspirationExample(inspirationIndex + 1));
 const drawer = document.querySelector('#cart-drawer');
 const backdrop = document.querySelector('#cart-backdrop');
-const cartProduct = document.querySelector('#cart-product');
+const cartItems = document.querySelector('#cart-items');
 const cartEmpty = document.querySelector('#cart-empty');
 const cartFooter = document.querySelector('#cart-footer');
 const cartCount = document.querySelector('.cart-icon b');
 const openCart = () => { drawer.classList.add('open'); backdrop.classList.add('open'); drawer.setAttribute('aria-hidden','false'); };
 const closeCart = () => { drawer.classList.remove('open'); backdrop.classList.remove('open'); drawer.setAttribute('aria-hidden','true'); };
-const addToCart = () => { const currentPrice = price.textContent; document.querySelector('#cart-size').textContent = sizeLabel.textContent; document.querySelector('#cart-price').textContent = currentPrice; document.querySelector('#cart-total').textContent = currentPrice; document.querySelector('#cart-image').src = preview.src; cartProduct.hidden=false; cartFooter.hidden=false; cartProduct.style.display=''; cartFooter.style.display=''; cartEmpty.hidden=true; cartCount.textContent='1'; };
+const cart = [];
+const cartPhotoUrls = new Set();
+const priceNumber = value => Number(value.replace(/\D/g, '')) || 0;
+const formatPrice = value => `${value.toLocaleString('ru-RU')} ₽`;
+const renderCart = () => {
+  cartItems.replaceChildren();
+  cart.forEach((item, index) => {
+    const product = document.createElement('article');
+    product.className = 'cart-product';
+    const image = document.createElement('img');
+    image.src = item.image;
+    image.alt = `Фотохолст ${item.size} в корзине`;
+    const info = document.createElement('div');
+    const title = document.createElement('b');
+    title.textContent = `Фотохолст ${item.size}`;
+    const note = document.createElement('small');
+    note.textContent = 'Готов к размещению на стене';
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'remove-cart';
+    remove.textContent = 'Удалить';
+    remove.addEventListener('click', () => {
+      const [removed] = cart.splice(index, 1);
+      if (!cart.some(cartItem => cartItem.image === removed.image) && removed.image !== activePhotoUrl) {
+        URL.revokeObjectURL(removed.image);
+        cartPhotoUrls.delete(removed.image);
+      }
+      renderCart();
+    });
+    const itemPrice = document.createElement('strong');
+    itemPrice.textContent = item.priceText;
+    info.append(title, note, remove);
+    product.append(image, info, itemPrice);
+    cartItems.append(product);
+  });
+  const total = cart.reduce((sum, item) => sum + item.price, 0);
+  cartEmpty.hidden = cart.length !== 0;
+  cartFooter.hidden = cart.length === 0;
+  document.querySelector('#cart-total').textContent = formatPrice(total);
+  cartCount.textContent = String(cart.length);
+};
+const addToCart = () => {
+  const file = input.files[0];
+  if (!file) return;
+  cartPhotoUrls.add(preview.src);
+  cart.push({ image: preview.src, file, size: sizeLabel.textContent, priceText: price.textContent, price: priceNumber(price.textContent) });
+  renderCart();
+};
 document.querySelector('.add-to-cart').addEventListener('click', () => { addToCart(); const toast=document.querySelector('#toast'); toast.classList.add('visible'); setTimeout(() => toast.classList.remove('visible'), 2600); openCart(); });
 document.querySelector('.cart-icon').addEventListener('click', openCart);
 document.querySelector('.close-cart').addEventListener('click', closeCart);
 backdrop.addEventListener('click', closeCart);
-document.querySelector('.remove-cart').addEventListener('click', () => { cartProduct.hidden=true; cartFooter.hidden=true; cartProduct.style.display='none'; cartFooter.style.display='none'; cartEmpty.hidden=false; cartCount.textContent='0'; });
 const checkoutModal = document.querySelector('#checkout-modal');
 const checkoutStatus = document.querySelector('#checkout-status');
-const openCheckout = () => { document.querySelector('#checkout-size').textContent=sizeLabel.textContent; document.querySelector('#checkout-price').textContent=price.textContent; checkoutStatus.textContent=''; checkoutModal.classList.add('open'); checkoutModal.setAttribute('aria-hidden','false'); };
+const openCheckout = () => { document.querySelector('#checkout-size').textContent=`${cart.length} шт.`; document.querySelector('#checkout-price').textContent=document.querySelector('#cart-total').textContent; checkoutStatus.textContent=''; checkoutModal.classList.add('open'); checkoutModal.setAttribute('aria-hidden','false'); };
 const closeCheckout = () => { checkoutModal.classList.remove('open'); checkoutModal.setAttribute('aria-hidden','true'); };
 document.querySelector('.checkout').addEventListener('click', openCheckout);
 document.querySelector('.close-checkout').addEventListener('click', closeCheckout);
@@ -130,22 +176,23 @@ document.querySelector('#checkout-form').addEventListener('submit', async event 
   event.preventDefault();
   const configured = window.SUPABASE_URL && !window.SUPABASE_URL.startsWith('YOUR_') && window.SUPABASE_ANON_KEY && !window.SUPABASE_ANON_KEY.startsWith('YOUR_');
   if(!configured){ checkoutStatus.textContent='Приём заказов ещё не настроен. Обратитесь к менеджеру.'; return; }
-  const file = input.files[0];
-  if(!file){ checkoutStatus.textContent='Загрузите фотографию перед оформлением.'; return; }
-  if(file.size > 10 * 1024 * 1024){ checkoutStatus.textContent='Размер фотографии не должен превышать 10 МБ.'; return; }
-  if(!['image/jpeg','image/png','image/webp'].includes(file.type)){ checkoutStatus.textContent='Поддерживаются JPG, PNG и WEBP.'; return; }
+  if(!cart.length){ checkoutStatus.textContent='Добавьте хотя бы один холст в корзину.'; return; }
+  if(cart.some(item => !item.file)){ checkoutStatus.textContent='Загрузите фотографию для каждого холста.'; return; }
   const submit = event.currentTarget.querySelector('[type="submit"]'); submit.disabled=true; checkoutStatus.textContent='Отправляем заказ…';
   if (!window.supabase) { checkoutStatus.textContent='Сервис заказов временно недоступен. Попробуйте позже.'; submit.disabled=false; return; }
   const supabaseClient = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
-  const orderId = crypto.randomUUID(), safeName = file.name.toLowerCase().replace(/[^a-z0-9._-]/g,'-');
-  const photoPath = `${orderId}/${safeName}`;
-  const {error:uploadError} = await supabaseClient.storage.from('order-photos').upload(photoPath,file,{contentType:file.type,upsert:false});
-  if(uploadError){ checkoutStatus.textContent=uploadError.message; submit.disabled=false; return; }
   const form = new FormData(event.currentTarget);
-  const order = {id:orderId,full_name:form.get('full_name'),phone:form.get('phone'),email:form.get('email')||null,address:form.get('address'),comment:form.get('comment')||null,canvas_size:sizeLabel.textContent,price_kop:Number(price.textContent.replace(/\D/g,''))*100,photo_path:photoPath};
-  const {error:orderError} = await supabaseClient.from('orders').insert(order);
-  if(orderError){ checkoutStatus.textContent=orderError.message; submit.disabled=false; return; }
-  checkoutStatus.textContent='Заказ принят! Мы свяжемся с вами для подтверждения.'; checkoutStatus.classList.add('success'); cartProduct.hidden=true; cartFooter.hidden=true; cartEmpty.hidden=false; cartCount.textContent='0'; event.currentTarget.reset(); setTimeout(()=>{closeCheckout();closeCart();},2400);
+  for (const item of cart) {
+    const orderId = crypto.randomUUID();
+    const safeName = item.file.name.toLowerCase().replace(/[^a-z0-9._-]/g,'-');
+    const photoPath = `${orderId}/${safeName}`;
+    const {error:uploadError} = await supabaseClient.storage.from('order-photos').upload(photoPath,item.file,{contentType:item.file.type,upsert:false});
+    if(uploadError){ checkoutStatus.textContent=uploadError.message; submit.disabled=false; return; }
+    const order = {id:orderId,full_name:form.get('full_name'),phone:form.get('phone'),email:form.get('email')||null,address:form.get('address'),comment:form.get('comment')||null,canvas_size:item.size,price_kop:item.price*100,photo_path:photoPath};
+    const {error:orderError} = await supabaseClient.from('orders').insert(order);
+    if(orderError){ checkoutStatus.textContent=orderError.message; submit.disabled=false; return; }
+  }
+  checkoutStatus.textContent='Заказ принят! Мы свяжемся с вами для подтверждения.'; checkoutStatus.classList.add('success'); cart.length=0; renderCart(); event.currentTarget.reset(); setTimeout(()=>{closeCheckout();closeCart();},2400);
 });
 document.querySelector('.menu-toggle').addEventListener('click', () => { const nav=document.querySelector('.site-header nav'); nav.classList.toggle('open'); });
 
