@@ -26,3 +26,6 @@ main{display:flex;flex-direction:column}.hero{order:1}.reasons{order:2}.how{orde
   .hero-frame{display:block;position:absolute;top:100px;right:clamp(110px,20vw,250px);width:clamp(280px,29vw,365px);padding:5px;background:#ddd2c5;box-shadow:0 12px 22px rgba(62,48,36,.28)}
   .hero-frame img{display:block;width:100%;aspect-ratio:1.5;object-fit:cover}
 }
+
+.hero,.creator{background-attachment:scroll}
+.hero-frame img,#preview-image{image-rendering:auto}
