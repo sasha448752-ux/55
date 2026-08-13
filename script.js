@@ -35,15 +35,21 @@ const showAvailableSizes = (imageWidth, imageHeight) => {
   sizeHint.textContent = `Подходящие размеры по качеству для фото ${imageWidth} × ${imageHeight} px.`;
   size.dispatchEvent(new Event('change'));
 };
-input.addEventListener('change', e => {
-  const file = e.target.files[0];
+const loadPhoto = file => {
   if (!file) return;
+  if (!['image/jpeg','image/png','image/webp'].includes(file.type)) { alert('Поддерживаются JPG, PNG и WEBP.'); return; }
+  if (file.size > 10 * 1024 * 1024) { alert('Размер фотографии не должен превышать 10 МБ.'); return; }
   const photoUrl = URL.createObjectURL(file);
   preview.src = photoUrl;
   const image = new Image();
-  image.onload = () => { showAvailableSizes(image.naturalWidth, image.naturalHeight); };
+  image.onload = () => { showAvailableSizes(image.naturalWidth, image.naturalHeight); URL.revokeObjectURL(photoUrl); };
   image.src = photoUrl;
-});
+};
+input.addEventListener('change', event => loadPhoto(event.target.files[0]));
+const uploadZone = document.querySelector('#upload-zone');
+['dragenter','dragover'].forEach(type => uploadZone.addEventListener(type, event => { event.preventDefault(); uploadZone.classList.add('dragging'); }));
+['dragleave','drop'].forEach(type => uploadZone.addEventListener(type, event => { event.preventDefault(); uploadZone.classList.remove('dragging'); }));
+uploadZone.addEventListener('drop', event => { const file = event.dataTransfer.files[0]; if (!file) return; const transfer = new DataTransfer(); transfer.items.add(file); input.files = transfer.files; loadPhoto(file); });
 size.addEventListener('change', e => { sizeLabel.textContent=e.target.value; price.textContent=prices[e.target.value]; setCanvasFormat(e.target.value); });
 document.querySelectorAll('.orientation button').forEach(button => button.addEventListener('click', () => {
   const option = [...size.options].find(item => {
@@ -90,6 +96,7 @@ document.querySelector('#checkout-form').addEventListener('submit', async event 
   if(file.size > 10 * 1024 * 1024){ checkoutStatus.textContent='Размер фотографии не должен превышать 10 МБ.'; return; }
   if(!['image/jpeg','image/png','image/webp'].includes(file.type)){ checkoutStatus.textContent='Поддерживаются JPG, PNG и WEBP.'; return; }
   const submit = event.currentTarget.querySelector('[type="submit"]'); submit.disabled=true; checkoutStatus.textContent='Отправляем заказ…';
+  if (!window.supabase) { checkoutStatus.textContent='Сервис заказов временно недоступен. Попробуйте позже.'; submit.disabled=false; return; }
   const supabaseClient = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
   const orderId = crypto.randomUUID(), safeName = file.name.toLowerCase().replace(/[^a-z0-9._-]/g,'-');
   const photoPath = `${orderId}/${safeName}`;
