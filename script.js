@@ -4,7 +4,7 @@ const canvas = document.querySelector('.canvas-preview');
 const size = document.querySelector('#size');
 const price = document.querySelector('#price');
 const sizeLabel = document.querySelector('#size-label');
-const prices = {'60 × 40 см':'1 990 ₽','40 × 40 см':'1 690 ₽','80 × 60 см':'3 190 ₽','100 × 70 см':'4 690 ₽'};
+const prices = {'30 × 20 см':'1 190 ₽','40 × 30 см':'1 490 ₽','40 × 40 см':'1 690 ₽','50 × 40 см':'1 790 ₽','60 × 40 см':'1 990 ₽','60 × 45 см':'2 190 ₽','70 × 50 см':'2 590 ₽','80 × 60 см':'3 190 ₽','90 × 60 см':'3 590 ₽','100 × 70 см':'4 690 ₽','120 × 80 см':'5 990 ₽','140 × 100 см':'7 490 ₽'};
 input.addEventListener('change', e => { const file=e.target.files[0]; if(file) preview.src=URL.createObjectURL(file); });
 size.addEventListener('change', e => { sizeLabel.textContent=e.target.value; price.textContent=prices[e.target.value]; });
 document.querySelectorAll('.orientation button').forEach(button => button.addEventListener('click', () => { document.querySelector('.orientation .active').classList.remove('active'); button.classList.add('active'); canvas.classList.remove('portrait','square'); if(button.dataset.orientation !== 'landscape') canvas.classList.add(button.dataset.orientation); }));
