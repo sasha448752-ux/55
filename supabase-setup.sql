@@ -1,0 +1,22 @@
+-- Run once in Supabase Dashboard → SQL Editor.
+create table public.admin_users (user_id uuid primary key references auth.users(id) on delete cascade);
+create table public.orders (
+  id uuid primary key, created_at timestamptz not null default now(), full_name text not null,
+  phone text not null, email text, address text not null, comment text, canvas_size text not null,
+  price_kop integer not null, photo_path text not null,
+  status text not null default 'new' check (status in ('new','in_progress','shipped','done','cancelled'))
+);
+alter table public.admin_users enable row level security;
+alter table public.orders enable row level security;
+create or replace function public.is_admin() returns boolean language sql stable security definer set search_path = public as $$ select exists (select 1 from public.admin_users where user_id = auth.uid()) $$;
+revoke all on public.admin_users from anon, authenticated;
+grant execute on function public.is_admin() to anon, authenticated;
+grant insert on public.orders to anon, authenticated;
+grant select, update on public.orders to authenticated;
+create policy "Anyone can create an order" on public.orders for insert to anon, authenticated with check (true);
+create policy "Admins manage orders" on public.orders for all to authenticated using (public.is_admin()) with check (public.is_admin());
+insert into storage.buckets (id, name, public) values ('order-photos', 'order-photos', false) on conflict (id) do nothing;
+create policy "Customers upload photos" on storage.objects for insert to anon, authenticated with check (bucket_id = 'order-photos' and lower(storage.extension(name)) in ('jpg','jpeg','png','webp'));
+create policy "Admins view photos" on storage.objects for select to authenticated using (bucket_id = 'order-photos' and public.is_admin());
+-- Create an admin in Dashboard → Authentication → Users, then run:
+-- insert into public.admin_users (user_id) values ('PASTE_THE_USER_UUID_HERE');
