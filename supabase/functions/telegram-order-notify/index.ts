@@ -73,28 +73,22 @@ Deno.serve(async request => {
   ].filter(Boolean).join('\n');
 
   const telegramUrl = `https://api.telegram.org/bot${telegramToken}`;
-  const sendMessage = async () => {
-    const result = await fetch(`${telegramUrl}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: telegramChatId, text, parse_mode: 'HTML' }),
-    });
-    if (!result.ok) throw new Error(`Telegram sendMessage failed: ${result.status}`);
+  const sendOriginalPhoto = async (photo: Blob) => {
+    const payload = new FormData();
+    payload.set('chat_id', telegramChatId);
+    payload.set('caption', text);
+    payload.set('parse_mode', 'HTML');
+    payload.set('document', photo, order.photo_path.split('/').pop() || 'canvas-photo.jpg');
+
+    // sendDocument keeps the original file; sendPhoto would compress it.
+    const result = await fetch(`${telegramUrl}/sendDocument`, { method: 'POST', body: payload });
+    if (!result.ok) throw new Error(`Telegram sendDocument failed: ${result.status}`);
   };
 
   try {
     const { data: photo, error: photoError } = await supabase.storage.from('order-photos').download(order.photo_path);
-    if (photoError || !photo) {
-      await sendMessage();
-    } else {
-      const payload = new FormData();
-      payload.set('chat_id', telegramChatId);
-      payload.set('caption', text);
-      payload.set('parse_mode', 'HTML');
-      payload.set('photo', photo, order.photo_path.split('/').pop() || 'canvas-photo.jpg');
-      const result = await fetch(`${telegramUrl}/sendPhoto`, { method: 'POST', body: payload });
-      if (!result.ok) await sendMessage();
-    }
+    if (photoError || !photo) throw new Error('Order photo could not be downloaded from storage');
+    await sendOriginalPhoto(photo);
   } catch (error) {
     console.error('Telegram notification failed:', error instanceof Error ? error.message : error);
     return response({ error: 'Telegram notification failed' }, 502);
