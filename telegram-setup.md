@@ -14,7 +14,7 @@
 npx supabase login
 npx supabase link --project-ref ВАШ_PROJECT_REF
 npx supabase secrets set TELEGRAM_BOT_TOKEN="ТОКЕН_БОТА" TELEGRAM_CHAT_ID="CHAT_ID"
-npx supabase functions deploy telegram-order-notify --no-verify-jwt
+npx supabase functions deploy telegram-order-notify
 ```
 
 `PROJECT_REF` — это часть адреса Supabase между `https://` и `.supabase.co`.
