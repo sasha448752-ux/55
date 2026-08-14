@@ -1,0 +1,106 @@
+import { createClient } from 'npm:@supabase/supabase-js@2';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+const escapeHtml = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, character => ({
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#039;',
+}[character] as string));
+
+const response = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
+  status,
+  headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+});
+
+const getServiceRoleKey = () => {
+  const legacyKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  if (legacyKey) return legacyKey;
+  const secretKeys = Deno.env.get('SUPABASE_SECRET_KEYS');
+  return secretKeys ? JSON.parse(secretKeys).default : undefined;
+};
+
+Deno.serve(async request => {
+  if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  if (request.method !== 'POST') return response({ error: 'Method not allowed' }, 405);
+
+  const telegramToken = Deno.env.get('TELEGRAM_BOT_TOKEN');
+  const telegramChatId = Deno.env.get('TELEGRAM_CHAT_ID');
+  const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  const serviceRoleKey = getServiceRoleKey();
+  if (!telegramToken || !telegramChatId || !supabaseUrl || !serviceRoleKey) {
+    console.error('Telegram notification function is not configured.');
+    return response({ error: 'Telegram notifications are not configured' }, 503);
+  }
+
+  let orderId: string;
+  try {
+    ({ orderId } = await request.json());
+  } catch {
+    return response({ error: 'Invalid request body' }, 400);
+  }
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(orderId || '')) {
+    return response({ error: 'Invalid order ID' }, 400);
+  }
+
+  const supabase = createClient(supabaseUrl, serviceRoleKey);
+  const { data: order, error: orderError } = await supabase
+    .from('orders')
+    .select('id, created_at, full_name, phone, email, address, comment, canvas_size, price_kop, photo_path, telegram_notified_at')
+    .eq('id', orderId)
+    .single();
+
+  if (orderError || !order) return response({ error: 'Order not found' }, 404);
+  if (order.telegram_notified_at) return response({ sent: true, alreadyNotified: true });
+
+  const price = (order.price_kop / 100).toLocaleString('ru-RU');
+  const text = [
+    '🆕 <b>Новый заказ на холст</b>',
+    `<b>Заказ:</b> #${escapeHtml(order.id.slice(0, 8))}`,
+    `<b>Размер:</b> ${escapeHtml(order.canvas_size)}`,
+    `<b>Сумма:</b> ${price} ₽`,
+    '',
+    `<b>Клиент:</b> ${escapeHtml(order.full_name)}`,
+    `<b>Телефон:</b> ${escapeHtml(order.phone)}`,
+    `<b>Email:</b> ${escapeHtml(order.email || 'не указан')}`,
+    `<b>Адрес:</b> ${escapeHtml(order.address)}`,
+    order.comment ? `<b>Комментарий:</b> ${escapeHtml(order.comment)}` : '',
+  ].filter(Boolean).join('\n');
+
+  const telegramUrl = `https://api.telegram.org/bot${telegramToken}`;
+  const sendMessage = async () => {
+    const result = await fetch(`${telegramUrl}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: telegramChatId, text, parse_mode: 'HTML' }),
+    });
+    if (!result.ok) throw new Error(`Telegram sendMessage failed: ${result.status}`);
+  };
+
+  try {
+    const { data: photo, error: photoError } = await supabase.storage.from('order-photos').download(order.photo_path);
+    if (photoError || !photo) {
+      await sendMessage();
+    } else {
+      const payload = new FormData();
+      payload.set('chat_id', telegramChatId);
+      payload.set('caption', text);
+      payload.set('parse_mode', 'HTML');
+      payload.set('photo', photo, order.photo_path.split('/').pop() || 'canvas-photo.jpg');
+      const result = await fetch(`${telegramUrl}/sendPhoto`, { method: 'POST', body: payload });
+      if (!result.ok) await sendMessage();
+    }
+  } catch (error) {
+    console.error('Telegram notification failed:', error instanceof Error ? error.message : error);
+    return response({ error: 'Telegram notification failed' }, 502);
+  }
+
+  const { error: updateError } = await supabase.from('orders').update({ telegram_notified_at: new Date().toISOString() }).eq('id', order.id);
+  if (updateError) console.error('Could not store notification status:', updateError.message);
+  return response({ sent: true });
+});

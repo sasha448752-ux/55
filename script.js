@@ -191,6 +191,12 @@ document.querySelector('#checkout-form').addEventListener('submit', async event 
     const order = {id:orderId,customer_id:user?.id||null,full_name:form.get('full_name'),phone:form.get('phone'),email:form.get('email')||user?.email||null,address:form.get('address'),comment:form.get('comment')||null,canvas_size:item.size,price_kop:item.price*100,photo_path:photoPath};
     const {error:orderError} = await supabaseClient.from('orders').insert(order);
     if(orderError){ checkoutStatus.textContent=orderError.message; submit.disabled=false; return; }
+    try {
+      const { error: telegramError } = await supabaseClient.functions.invoke('telegram-order-notify', { body: { orderId } });
+      if (telegramError) console.warn('Telegram notification was not sent:', telegramError.message);
+    } catch (telegramError) {
+      console.warn('Telegram notification was not sent:', telegramError);
+    }
   }
   checkoutStatus.textContent='Заказ принят! Мы свяжемся с вами для подтверждения.'; checkoutStatus.classList.add('success'); cart.length=0; renderCart(); event.currentTarget.reset(); setTimeout(()=>{closeCheckout();closeCart();},2400);
 });

@@ -1,0 +1,5 @@
+# Private environment values for Supabase Edge Functions
+supabase/functions/.env
+supabase/functions/.env.*
+.env
+.env.*
