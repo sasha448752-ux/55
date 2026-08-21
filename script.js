@@ -19,6 +19,7 @@ const allSizes = [...size.options].map(option => option.value);
 const printDpi = 120;
 const formatFor = (width, height) => width === height ? 'square' : width > height ? 'landscape' : 'portrait';
 const requiredPixels = centimeters => Math.ceil(centimeters / 2.54 * printDpi);
+const minimumCropRetention = .75;
 let activePhotoUrl = null;
 let activeImageSize = null;
 let cropPosition = { x: 50, y: 50 };
@@ -75,14 +76,27 @@ canvas.addEventListener('keydown', event => {
 });
 resetCropButton.addEventListener('click', resetCrop);
 const showAvailableSizes = (imageWidth, imageHeight) => {
+  const sourceRatio = imageWidth / imageHeight;
   const available = allSizes.filter(value => {
     const [width, height] = getDimensions(value);
+    const canvasRatio = width / height;
+    const retainedPart = Math.min(sourceRatio / canvasRatio, canvasRatio / sourceRatio);
     // The preview uses `object-fit: cover`: a customer may choose another
     // aspect ratio and move the crop, but the source must never be enlarged
-    // beyond its available pixels for the selected canvas size.
-    return Math.max(requiredPixels(width) / imageWidth, requiredPixels(height) / imageHeight) <= 1;
+    // or lose more than a quarter of the photo in one direction.
+    return retainedPart >= minimumCropRetention
+      && Math.max(requiredPixels(width) / imageWidth, requiredPixels(height) / imageHeight) <= 1;
   });
   size.replaceChildren(...available.map(value => new Option(value, value)));
+  const availableFormats = new Set(available.map(value => {
+    const [width, height] = getDimensions(value);
+    return formatFor(width, height);
+  }));
+  document.querySelectorAll('.orientation button').forEach(button => {
+    const isAvailable = availableFormats.has(button.dataset.orientation);
+    button.hidden = !isAvailable;
+    button.disabled = !isAvailable;
+  });
   if (!available.length) {
     size.disabled = true;
     sizeHint.textContent = 'Для печати хорошего качества нужен файл большего разрешения.';
@@ -90,7 +104,6 @@ const showAvailableSizes = (imageWidth, imageHeight) => {
     return;
   }
   size.disabled = false;
-  const sourceRatio = imageWidth / imageHeight;
   const recommended = available
     .map(value => {
       const [width, height] = getDimensions(value);
@@ -107,7 +120,7 @@ const showAvailableSizes = (imageWidth, imageHeight) => {
   // photo should start with a portrait format, while every compatible size
   // remains available in the list for cropping.
   size.value = recommended.value;
-  sizeHint.textContent = `Доступно форматов: ${available.length}. Подобран размер для фото ${imageWidth} × ${imageHeight} px; другой формат можно выбрать и кадрировать перетаскиванием.`;
+  sizeHint.textContent = `Доступно форматов: ${available.length}. Показаны только размеры без сильной обрезки для фото ${imageWidth} × ${imageHeight} px; кадр можно сместить перетаскиванием.`;
   size.dispatchEvent(new Event('change'));
 };
 const loadPhoto = file => {
