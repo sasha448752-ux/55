@@ -330,6 +330,7 @@ document.querySelector('#checkout-form').addEventListener('submit', async event 
   const customerEmail = String(form.get('email') || user?.email || '').trim().toLowerCase();
   if (!customerEmail) { checkoutStatus.textContent='Укажите email для подтверждения заказа и создания личного кабинета.'; submit.disabled=false; return; }
   const guestOrderClaims = [];
+  const telegramOrderIds = [];
   for (const item of cart) {
     const orderId = crypto.randomUUID();
     const accountClaimToken = user ? null : crypto.randomUUID();
@@ -355,29 +356,26 @@ document.querySelector('#checkout-form').addEventListener('submit', async event 
     const {error:orderError} = await supabaseClient.from('orders').insert(order);
     if(orderError){ checkoutStatus.textContent=orderError.message; submit.disabled=false; return; }
     if (accountClaimToken) guestOrderClaims.push({ orderId, claimToken: accountClaimToken });
+    telegramOrderIds.push(orderId);
+  }
+  // The order is safely stored. Telegram and email must not make the customer
+  // wait for a large photo to be downloaded and delivered.
+  void Promise.all(telegramOrderIds.map(async orderId => {
     try {
-      const { error: telegramError } = await supabaseClient.functions.invoke('telegram-order-notify', { body: { orderId } });
-      if (telegramError) console.warn('Telegram notification was not sent:', telegramError.message);
+      const { error } = await supabaseClient.functions.invoke('telegram-order-notify', { body: { orderId } });
+      if (error) console.warn('Telegram notification was not sent:', error.message);
     } catch (telegramError) {
       console.warn('Telegram notification was not sent:', telegramError);
     }
-  }
-  let accountMessage = '';
+  }));
   if (guestOrderClaims.length) {
-    try {
-      const { data, error } = await supabaseClient.functions.invoke('create-customer-account', {
-        body: { email: customerEmail, fullName: form.get('full_name'), orders: guestOrderClaims },
-      });
-      if (error || !data?.invited) {
-        accountMessage = ' Войдите в существующий кабинет, чтобы видеть будущие заказы.';
-      } else {
-        accountMessage = ' На email отправлена ссылка для установки пароля от личного кабинета.';
-      }
-    } catch (accountError) {
-      console.warn('Customer account invitation was not sent:', accountError);
-      accountMessage = ' Ссылка для доступа в кабинет будет доступна после повторного оформления.';
-    }
+    void supabaseClient.functions.invoke('create-customer-account', {
+      body: { email: customerEmail, fullName: form.get('full_name'), orders: guestOrderClaims },
+    }).then(({ error }) => {
+      if (error) console.warn('Customer account invitation was not sent:', error.message);
+    }).catch(accountError => console.warn('Customer account invitation was not sent:', accountError));
   }
+  const accountMessage = guestOrderClaims.length ? ' На email придёт ссылка для установки пароля от личного кабинета.' : '';
   checkoutStatus.textContent=`Заказ принят! Мы свяжемся с вами для подтверждения.${accountMessage}`; checkoutStatus.classList.add('success'); cart.length=0; renderCart(); event.currentTarget.reset(); setTimeout(()=>{closeCheckout();closeCart();},4200);
 });
 document.querySelector('.menu-toggle').addEventListener('click', () => { const nav=document.querySelector('.site-header nav'); nav.classList.toggle('open'); });
