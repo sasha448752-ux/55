@@ -343,7 +343,10 @@ document.querySelector('#checkout-form').addEventListener('submit', async event 
   const submit = event.currentTarget.querySelector('[type="submit"]'); submit.disabled=true; checkoutStatus.textContent='Отправляем заказ…';
   if (!window.supabase) { checkoutStatus.textContent='Сервис заказов временно недоступен. Попробуйте позже.'; submit.disabled=false; return; }
   const supabaseClient = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
-  const {data:{user}} = await supabaseClient.auth.getUser();
+  // getSession reads the already stored session and does not pause checkout for
+  // a separate Auth network request. Database RLS still validates ownership.
+  const {data:{session}} = await supabaseClient.auth.getSession();
+  const user = session?.user || null;
   const form = new FormData(event.currentTarget);
   const customerEmail = String(form.get('email') || user?.email || '').trim().toLowerCase();
   if (!customerEmail) { checkoutStatus.textContent='Укажите email для подтверждения заказа и создания личного кабинета.'; submit.disabled=false; return; }
@@ -388,22 +391,19 @@ document.querySelector('#checkout-form').addEventListener('submit', async event 
   }));
   let accountMessage = '';
   if (guestOrderClaims.length) {
-    try {
-      const { data, error } = await supabaseClient.functions.invoke('create-customer-account', {
+    accountMessage = ' Заказ будет привязан к личному кабинету; письмо придёт, если нужно настроить доступ.';
+    // Account invitation is supplementary: it must not block an already saved
+    // order when email delivery or a serverless function is temporarily slow.
+    void (async () => {
+      try {
+        const { error } = await supabaseClient.functions.invoke('create-customer-account', {
         body: { email: customerEmail, fullName: form.get('full_name'), orders: guestOrderClaims },
       });
-      if (error) {
-        console.warn('Customer account invitation was not sent:', error.message);
-        accountMessage = ' Войдите в существующий кабинет, чтобы видеть будущие заказы.';
-      } else if (data?.invited) {
-        accountMessage = ' На email отправлена ссылка для установки пароля от личного кабинета.';
-      } else {
-        accountMessage = ' Заказ привязан к вашему личному кабинету.';
+        if (error) console.warn('Customer account invitation was not sent:', error.message);
+      } catch (accountError) {
+        console.warn('Customer account invitation was not sent:', accountError);
       }
-    } catch (accountError) {
-      console.warn('Customer account invitation was not sent:', accountError);
-      accountMessage = ' Войдите в существующий кабинет, чтобы видеть будущие заказы.';
-    }
+    })();
   }
   checkoutStatus.textContent=`Заказ принят! Мы свяжемся с вами для подтверждения.${accountMessage}`; checkoutStatus.classList.add('success'); cart.length=0; renderCart(); event.currentTarget.reset(); setTimeout(()=>{closeCheckout();closeCart();},4200);
 });
