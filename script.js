@@ -20,13 +20,67 @@ const printDpi = 120;
 const formatFor = (width, height) => width === height ? 'square' : width > height ? 'landscape' : 'portrait';
 const requiredPixels = centimeters => Math.ceil(centimeters / 2.54 * printDpi);
 let activePhotoUrl = null;
+let activeImageSize = null;
+let cropPosition = { x: 50, y: 50 };
+const cropControls = document.querySelector('#crop-controls');
+const resetCropButton = document.querySelector('#reset-crop');
+const clampCrop = value => Math.max(0, Math.min(100, value));
+const applyCrop = () => {
+  preview.style.objectPosition = `${cropPosition.x}% ${cropPosition.y}%`;
+};
+const resetCrop = () => {
+  cropPosition = { x: 50, y: 50 };
+  applyCrop();
+};
+const cropOverflow = () => {
+  if (!activeImageSize) return { x: 0, y: 0 };
+  const rect = preview.getBoundingClientRect();
+  const scale = Math.max(rect.width / activeImageSize.width, rect.height / activeImageSize.height);
+  return {
+    x: Math.max(0, activeImageSize.width * scale - rect.width),
+    y: Math.max(0, activeImageSize.height * scale - rect.height),
+  };
+};
+let cropDrag = null;
+canvas.addEventListener('pointerdown', event => {
+  if (!activeImageSize || (event.pointerType === 'mouse' && event.button !== 0)) return;
+  cropDrag = { id: event.pointerId, startX: event.clientX, startY: event.clientY, cropX: cropPosition.x, cropY: cropPosition.y };
+  canvas.setPointerCapture(event.pointerId);
+  canvas.classList.add('crop-dragging');
+});
+canvas.addEventListener('pointermove', event => {
+  if (!cropDrag || cropDrag.id !== event.pointerId) return;
+  const overflow = cropOverflow();
+  if (overflow.x) cropPosition.x = clampCrop(cropDrag.cropX - ((event.clientX - cropDrag.startX) / overflow.x) * 100);
+  if (overflow.y) cropPosition.y = clampCrop(cropDrag.cropY - ((event.clientY - cropDrag.startY) / overflow.y) * 100);
+  applyCrop();
+});
+const stopCropDrag = event => {
+  if (!cropDrag || cropDrag.id !== event.pointerId) return;
+  cropDrag = null;
+  canvas.classList.remove('crop-dragging');
+};
+canvas.addEventListener('pointerup', stopCropDrag);
+canvas.addEventListener('pointercancel', stopCropDrag);
+canvas.addEventListener('keydown', event => {
+  if (!activeImageSize) return;
+  const step = event.shiftKey ? 10 : 3;
+  if (event.key === 'ArrowLeft') cropPosition.x = clampCrop(cropPosition.x + step);
+  else if (event.key === 'ArrowRight') cropPosition.x = clampCrop(cropPosition.x - step);
+  else if (event.key === 'ArrowUp') cropPosition.y = clampCrop(cropPosition.y + step);
+  else if (event.key === 'ArrowDown') cropPosition.y = clampCrop(cropPosition.y - step);
+  else return;
+  event.preventDefault();
+  applyCrop();
+});
+resetCropButton.addEventListener('click', resetCrop);
 const showAvailableSizes = (imageWidth, imageHeight) => {
-  const photoFormat = formatFor(imageWidth, imageHeight);
-  // A photo can be cropped into a square, but never forced into the opposite orientation.
   const available = allSizes.filter(value => {
     const [width, height] = getDimensions(value);
-    const canvasFormat = formatFor(width, height);
-    return canvasFormat === photoFormat || canvasFormat === 'square';
+    // The preview uses `object-fit: cover`: a customer may choose another
+    // aspect ratio and move the crop, but the source must never be enlarged
+    // beyond its available pixels for the selected canvas size.
+    return Math.max(requiredPixels(width) / imageWidth, requiredPixels(height) / imageHeight) <= 1;
   });
   size.replaceChildren(...available.map(value => new Option(value, value)));
   if (!available.length) {
@@ -36,8 +90,24 @@ const showAvailableSizes = (imageWidth, imageHeight) => {
     return;
   }
   size.disabled = false;
-  size.value = available.includes(size.value) ? size.value : available[0];
-  sizeHint.textContent = `Подходящие размеры по качеству для фото ${imageWidth} × ${imageHeight} px.`;
+  const sourceRatio = imageWidth / imageHeight;
+  const recommended = available
+    .map(value => {
+      const [width, height] = getDimensions(value);
+      return {
+        value,
+        // First choose the closest natural proportion of the source photo.
+        ratioDistance: Math.abs(Math.log((width / height) / sourceRatio)),
+        // For equivalent proportions, offer a familiar medium-sized canvas.
+        sizeDistance: Math.abs(Math.max(width, height) - 60),
+      };
+    })
+    .sort((a, b) => a.ratioDistance - b.ratioDistance || a.sizeDistance - b.sizeDistance)[0];
+  // Do not inherit a format selected for the previous upload: a portrait
+  // photo should start with a portrait format, while every compatible size
+  // remains available in the list for cropping.
+  size.value = recommended.value;
+  sizeHint.textContent = `Доступно форматов: ${available.length}. Подобран размер для фото ${imageWidth} × ${imageHeight} px; другой формат можно выбрать и кадрировать перетаскиванием.`;
   size.dispatchEvent(new Event('change'));
 };
 const loadPhoto = file => {
@@ -47,9 +117,15 @@ const loadPhoto = file => {
   if (activePhotoUrl && !cartPhotoUrls.has(activePhotoUrl)) URL.revokeObjectURL(activePhotoUrl);
   const photoUrl = URL.createObjectURL(file);
   activePhotoUrl = photoUrl;
+  resetCrop();
   preview.src = photoUrl;
   const image = new Image();
-  image.onload = () => { showAvailableSizes(image.naturalWidth, image.naturalHeight); };
+  image.onload = () => {
+    activeImageSize = { width: image.naturalWidth, height: image.naturalHeight };
+    canvas.classList.add('crop-enabled');
+    cropControls.hidden = false;
+    showAvailableSizes(image.naturalWidth, image.naturalHeight);
+  };
   image.src = photoUrl;
 };
 input.addEventListener('change', event => loadPhoto(event.target.files[0]));
@@ -123,6 +199,7 @@ const renderCart = () => {
     product.className = 'cart-product';
     const image = document.createElement('img');
     image.src = item.image;
+    image.style.objectPosition = `${item.crop?.x ?? 50}% ${item.crop?.y ?? 50}%`;
     image.alt = `Фотохолст ${item.size} в корзине`;
     const info = document.createElement('div');
     const title = document.createElement('b');
@@ -157,7 +234,7 @@ const addToCart = () => {
   const file = input.files[0];
   if (!file) return;
   cartPhotoUrls.add(preview.src);
-  cart.push({ image: preview.src, file, size: sizeLabel.textContent, priceText: price.textContent, price: priceNumber(price.textContent) });
+  cart.push({ image: preview.src, file, size: sizeLabel.textContent, priceText: price.textContent, price: priceNumber(price.textContent), crop: { ...cropPosition } });
   renderCart();
 };
 document.querySelector('.add-to-cart').addEventListener('click', () => { addToCart(); const toast=document.querySelector('#toast'); toast.classList.add('visible'); setTimeout(() => toast.classList.remove('visible'), 2600); openCart(); });
@@ -188,7 +265,7 @@ document.querySelector('#checkout-form').addEventListener('submit', async event 
     const photoPath = `${orderId}/${safeName}`;
     const {error:uploadError} = await supabaseClient.storage.from('order-photos').upload(photoPath,item.file,{contentType:item.file.type,upsert:false});
     if(uploadError){ checkoutStatus.textContent=uploadError.message; submit.disabled=false; return; }
-    const order = {id:orderId,customer_id:user?.id||null,full_name:form.get('full_name'),phone:form.get('phone'),email:form.get('email')||user?.email||null,address:form.get('address'),comment:form.get('comment')||null,canvas_size:item.size,price_kop:item.price*100,photo_path:photoPath};
+    const order = {id:orderId,customer_id:user?.id||null,full_name:form.get('full_name'),phone:form.get('phone'),email:form.get('email')||user?.email||null,address:form.get('address'),comment:form.get('comment')||null,canvas_size:item.size,price_kop:item.price*100,photo_path:photoPath,crop_position:item.crop||{x:50,y:50}};
     const {error:orderError} = await supabaseClient.from('orders').insert(order);
     if(orderError){ checkoutStatus.textContent=orderError.message; submit.disabled=false; return; }
     try {

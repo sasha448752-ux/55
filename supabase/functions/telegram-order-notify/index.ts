@@ -51,7 +51,7 @@ Deno.serve(async request => {
   const supabase = createClient(supabaseUrl, serviceRoleKey);
   const { data: order, error: orderError } = await supabase
     .from('orders')
-    .select('id, created_at, full_name, phone, email, address, comment, canvas_size, price_kop, photo_path, telegram_notified_at')
+    .select('id, created_at, full_name, phone, email, address, comment, canvas_size, price_kop, photo_path, crop_position, telegram_notified_at')
     .eq('id', orderId)
     .single();
 
@@ -59,10 +59,18 @@ Deno.serve(async request => {
   if (order.telegram_notified_at) return response({ sent: true, alreadyNotified: true });
 
   const price = (order.price_kop / 100).toLocaleString('ru-RU');
+  const crop = (order.crop_position && typeof order.crop_position === 'object' ? order.crop_position : {}) as Record<string, unknown>;
+  const cropCoordinate = (value: unknown) => {
+    const coordinate = Number(value);
+    return Number.isFinite(coordinate) ? Math.round(Math.max(0, Math.min(100, coordinate))) : 50;
+  };
+  const cropX = cropCoordinate(crop.x);
+  const cropY = cropCoordinate(crop.y);
   const text = [
     '🆕 <b>Новый заказ на холст</b>',
     `<b>Заказ:</b> #${escapeHtml(order.id.slice(0, 8))}`,
     `<b>Размер:</b> ${escapeHtml(order.canvas_size)}`,
+    `<b>Кадрирование:</b> ${cropX}% по горизонтали, ${cropY}% по вертикали`,
     `<b>Сумма:</b> ${price} ₽`,
     '',
     `<b>Клиент:</b> ${escapeHtml(order.full_name)}`,

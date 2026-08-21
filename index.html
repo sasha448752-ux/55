@@ -52,7 +52,7 @@
           <label>Ориентация<div class="orientation"><button class="active" type="button" data-orientation="landscape">▭</button><button type="button" data-orientation="portrait">▯</button><button type="button" data-orientation="square">□</button></div></label>
           <label>Цвет<div class="toggle"><button class="active" type="button" data-filter="color">Цветное</button><button type="button" data-filter="gray">Ч/Б</button></div></label>
         </form>
-        <div class="canvas-stage"><span class="preview-badge">Ваш холст</span><div class="canvas-preview"><img id="preview-image" src="assets/canvaso-preview-v2.svg" alt="Предпросмотр холста"></div><small class="preview-caption">Так фотография будет выглядеть на холсте</small></div>
+        <div class="canvas-stage"><span class="preview-badge">Ваш холст</span><div class="canvas-preview" id="crop-area" tabindex="0" aria-label="Предпросмотр кадрирования: перетаскивайте фотографию для выбора области печати"><img id="preview-image" src="assets/canvaso-preview-v2.svg" alt="Предпросмотр холста" draggable="false"></div><div class="crop-controls" id="crop-controls" hidden><span>↔ Перетащите фото, чтобы выбрать кадр</span><button type="button" id="reset-crop">Сбросить</button></div><small class="preview-caption">Так фотография будет выглядеть на холсте</small></div>
         <aside class="price-card"><div><strong id="size-label">60 × 40 см</strong><button class="change-size" type="button">Изменить размер</button></div><b id="price">1 990 ₽</b><button class="button dark add-to-cart" type="button">Добавить в корзину</button><p class="ready">✓&nbsp; Готово к стене</p><small>Холст натянут на деревянный<br>подрамник и готов к размещению.</small></aside>
       </div>
     </div></section>
