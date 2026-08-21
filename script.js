@@ -24,6 +24,32 @@ const photoEffects = {
 };
 let activePhotoEffect = 'none';
 const applyPhotoEffect = () => { preview.style.filter = photoEffects[activePhotoEffect] || 'none'; };
+const createPrintFile = (file, effect) => {
+  if (!file || effect === 'none') return Promise.resolve(file);
+  return new Promise((resolve, reject) => {
+    const source = new Image();
+    const sourceUrl = URL.createObjectURL(file);
+    const dispose = () => URL.revokeObjectURL(sourceUrl);
+    source.onload = () => {
+      const printCanvas = document.createElement('canvas');
+      printCanvas.width = source.naturalWidth;
+      printCanvas.height = source.naturalHeight;
+      const context = printCanvas.getContext('2d', { alpha: false });
+      if (!context) { dispose(); reject(new Error('Не удалось подготовить фотографию.')); return; }
+      context.filter = photoEffects[effect] || 'none';
+      context.drawImage(source, 0, 0, printCanvas.width, printCanvas.height);
+      dispose();
+      // PNG is lossless: only the requested visual effect changes the pixels.
+      printCanvas.toBlob(blob => {
+        if (!blob) { reject(new Error('Не удалось применить эффект.')); return; }
+        const name = `${file.name.replace(/\.[^.]+$/, '') || 'canvaso-photo'}-canvaso.png`;
+        resolve(new File([blob], name, { type: 'image/png', lastModified: file.lastModified }));
+      }, 'image/png');
+    };
+    source.onerror = () => { dispose(); reject(new Error('Не удалось прочитать фотографию.')); };
+    source.src = sourceUrl;
+  });
+};
 const allSizes = [...size.options]
   .map(option => option.value)
   .sort((first, second) => {
@@ -241,6 +267,7 @@ const renderCart = () => {
     const image = document.createElement('img');
     image.src = item.image;
     image.style.objectPosition = `${item.crop?.x ?? 50}% ${item.crop?.y ?? 50}%`;
+    image.style.filter = photoEffects[item.photoEffect] || 'none';
     image.alt = `Фотохолст ${item.size} в корзине`;
     const info = document.createElement('div');
     const title = document.createElement('b');
@@ -306,9 +333,23 @@ document.querySelector('#checkout-form').addEventListener('submit', async event 
   for (const item of cart) {
     const orderId = crypto.randomUUID();
     const accountClaimToken = user ? null : crypto.randomUUID();
-    const safeName = item.file.name.toLowerCase().replace(/[^a-z0-9._-]/g,'-');
+    let printFile;
+    try {
+      checkoutStatus.textContent = item.photoEffect && item.photoEffect !== 'none' ? 'Применяем эффект к фото…' : 'Отправляем заказ…';
+      printFile = await createPrintFile(item.file, item.photoEffect || 'none');
+    } catch (printError) {
+      checkoutStatus.textContent = printError instanceof Error ? printError.message : 'Не удалось подготовить фотографию.';
+      submit.disabled = false;
+      return;
+    }
+    if (printFile.size > 50 * 1024 * 1024) {
+      checkoutStatus.textContent = 'Фото с эффектом получилось больше 50 МБ. Выберите файл меньшего размера.';
+      submit.disabled = false;
+      return;
+    }
+    const safeName = printFile.name.toLowerCase().replace(/[^a-z0-9._-]/g,'-');
     const photoPath = `${orderId}/${safeName}`;
-    const {error:uploadError} = await supabaseClient.storage.from('order-photos').upload(photoPath,item.file,{contentType:item.file.type,upsert:false});
+    const {error:uploadError} = await supabaseClient.storage.from('order-photos').upload(photoPath,printFile,{contentType:printFile.type,upsert:false});
     if(uploadError){ checkoutStatus.textContent=uploadError.message; submit.disabled=false; return; }
     const order = {id:orderId,customer_id:user?.id||null,full_name:form.get('full_name'),phone:form.get('phone'),email:customerEmail,address:form.get('address'),comment:form.get('comment')||null,canvas_size:item.size,price_kop:item.price*100,photo_path:photoPath,crop_position:item.crop||{x:50,y:50},photo_effect:item.photoEffect||'none',account_claim_token:accountClaimToken};
     const {error:orderError} = await supabaseClient.from('orders').insert(order);
