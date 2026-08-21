@@ -27,5 +27,6 @@ create index if not exists orders_customer_id_idx on public.orders (customer_id)
 insert into storage.buckets (id, name, public) values ('order-photos', 'order-photos', false) on conflict (id) do nothing;
 create policy "Customers upload photos" on storage.objects for insert to anon, authenticated with check (bucket_id = 'order-photos' and lower(storage.extension(name)) in ('jpg','jpeg','png','webp'));
 create policy "Admins view photos" on storage.objects for select to authenticated using (bucket_id = 'order-photos' and (select private.is_admin()));
+create policy "Customers view own order photos" on storage.objects for select to authenticated using (bucket_id = 'order-photos' and exists (select 1 from public.orders where public.orders.customer_id = (select auth.uid()) and public.orders.photo_path = storage.objects.name));
 -- Create an admin in Dashboard → Authentication → Users, then run:
 -- insert into public.admin_users (user_id) values ('PASTE_THE_USER_UUID_HERE');

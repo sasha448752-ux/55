@@ -9,15 +9,26 @@ const statusNames = {new:'Новый',in_progress:'В работе',shipped:'О�
 
 const escapeHtml = value => String(value || '').replace(/[&<>"']/g, character => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]));
 const setMessage = (message, success = false) => { authMessage.textContent = message; authMessage.classList.toggle('success', success); };
+const canvasRatio = value => {
+  const [width, height] = String(value || '').match(/\d+/g)?.slice(0, 2).map(Number) || [];
+  return width && height ? `${width} / ${height}` : '4 / 3';
+};
 const showAccount = async user => {
   authPanel.hidden = true;
   customerPanel.hidden = false;
   document.querySelector('#customer-email').textContent = user.email || '';
   ordersList.innerHTML = '<p class="empty">Загружаем заказы…</p>';
-  const {data, error} = await supabaseClient.from('orders').select('id,created_at,canvas_size,price_kop,status').order('created_at',{ascending:false});
+  const {data, error} = await supabaseClient.from('orders').select('id,created_at,canvas_size,price_kop,status,photo_path').order('created_at',{ascending:false});
   if (error) { ordersList.innerHTML = '<p class="empty">Не удалось загрузить заказы. Выполните customer-account-migration.sql в Supabase.</p>'; return; }
   if (!data.length) { ordersList.innerHTML = '<p class="empty">У вас пока нет заказов. После оформления авторизованным пользователем они появятся здесь.</p>'; return; }
-  ordersList.innerHTML = data.map(order => `<article class="order"><div><h2>Заказ №${escapeHtml(order.id.slice(0,8))}</h2><p>${new Date(order.created_at).toLocaleDateString('ru-RU')} · Холст ${escapeHtml(order.canvas_size)}</p><span class="status">${escapeHtml(statusNames[order.status] || order.status)}</span></div><strong class="order-price">${(order.price_kop / 100).toLocaleString('ru-RU')} ₽</strong></article>`).join('');
+  const ordersWithPhotos = await Promise.all(data.map(async order => {
+    const { data: photo } = order.photo_path ? await supabaseClient.storage.from('order-photos').createSignedUrl(order.photo_path, 3600) : { data: null };
+    return { ...order, photoUrl: photo?.signedUrl || '' };
+  }));
+  ordersList.innerHTML = ordersWithPhotos.map(order => {
+    const photo = order.photoUrl ? `<img class="order-photo" src="${escapeHtml(order.photoUrl)}" alt="Фотография для заказа №${escapeHtml(order.id.slice(0,8))}" style="aspect-ratio:${canvasRatio(order.canvas_size)}" loading="lazy">` : '<div class="order-photo order-photo-empty">Фото готовится</div>';
+    return `<article class="order">${photo}<div class="order-info"><h2>Заказ №${escapeHtml(order.id.slice(0,8))}</h2><p>${new Date(order.created_at).toLocaleDateString('ru-RU')} · Холст ${escapeHtml(order.canvas_size)}</p><span class="status">${escapeHtml(statusNames[order.status] || order.status)}</span></div><strong class="order-price">${(order.price_kop / 100).toLocaleString('ru-RU')} ₽</strong></article>`;
+  }).join('');
 };
 
 if (!supabaseClient) setMessage('Личный кабинет будет доступен после настройки Supabase.');
