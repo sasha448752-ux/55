@@ -29,6 +29,22 @@ const printDpi = 120;
 const formatFor = (width, height) => width === height ? 'square' : width > height ? 'landscape' : 'portrait';
 const requiredPixels = centimeters => Math.ceil(centimeters / 2.54 * printDpi);
 const minimumCropRetention = .75;
+const orientationNames = { landscape: 'горизонтальном', portrait: 'вертикальном', square: 'квадратном' };
+let availablePhotoSizes = allSizes;
+const showSizesForOrientation = (orientation, preferredValue) => {
+  const values = availablePhotoSizes.filter(value => {
+    const [width, height] = getDimensions(value);
+    return formatFor(width, height) === orientation;
+  });
+  if (!values.length) return;
+  size.replaceChildren(...values.map(value => new Option(value, value)));
+  size.disabled = false;
+  size.value = values.includes(preferredValue) ? preferredValue : values[0];
+  if (activeImageSize) {
+    sizeHint.textContent = `В ${orientationNames[orientation]} направлении: ${values.length}. Показаны размеры без сильной обрезки; кадр можно сместить перетаскиванием.`;
+  }
+  size.dispatchEvent(new Event('change'));
+};
 let activePhotoUrl = null;
 let activeImageSize = null;
 let cropPosition = { x: 50, y: 50 };
@@ -96,7 +112,7 @@ const showAvailableSizes = (imageWidth, imageHeight) => {
     return retainedPart >= minimumCropRetention
       && Math.max(requiredPixels(width) / imageWidth, requiredPixels(height) / imageHeight) <= 1;
   });
-  size.replaceChildren(...available.map(value => new Option(value, value)));
+  availablePhotoSizes = available;
   const availableFormats = new Set(available.map(value => {
     const [width, height] = getDimensions(value);
     return formatFor(width, height);
@@ -112,7 +128,6 @@ const showAvailableSizes = (imageWidth, imageHeight) => {
     price.textContent = '—';
     return;
   }
-  size.disabled = false;
   const recommended = available
     .map(value => {
       const [width, height] = getDimensions(value);
@@ -125,12 +140,10 @@ const showAvailableSizes = (imageWidth, imageHeight) => {
       };
     })
     .sort((a, b) => a.ratioDistance - b.ratioDistance || a.sizeDistance - b.sizeDistance)[0];
-  // Do not inherit a format selected for the previous upload: a portrait
-  // photo should start with a portrait format, while every compatible size
-  // remains available in the list for cropping.
-  size.value = recommended.value;
-  sizeHint.textContent = `Доступно форматов: ${available.length}. Показаны только размеры без сильной обрезки для фото ${imageWidth} × ${imageHeight} px; кадр можно сместить перетаскиванием.`;
-  size.dispatchEvent(new Event('change'));
+  // Do not inherit a format selected for the previous upload. Start with
+  // the closest orientation and keep its menu separate from other formats.
+  const [recommendedWidth, recommendedHeight] = getDimensions(recommended.value);
+  showSizesForOrientation(formatFor(recommendedWidth, recommendedHeight), recommended.value);
 };
 const loadPhoto = file => {
   if (!file) return;
@@ -157,11 +170,7 @@ const uploadZone = document.querySelector('#upload-zone');
 uploadZone.addEventListener('drop', event => { const file = event.dataTransfer.files[0]; if (!file) return; const transfer = new DataTransfer(); transfer.items.add(file); input.files = transfer.files; loadPhoto(file); });
 size.addEventListener('change', e => { sizeLabel.textContent=e.target.value; price.textContent=priceFor(e.target.value); setCanvasFormat(e.target.value); });
 document.querySelectorAll('.orientation button').forEach(button => button.addEventListener('click', () => {
-  const option = [...size.options].find(item => {
-    const [width, height] = getDimensions(item.value);
-    return button.dataset.orientation === 'square' ? width === height : button.dataset.orientation === 'portrait' ? height > width : width > height;
-  });
-  if (option) { size.value = option.value; size.dispatchEvent(new Event('change')); }
+  showSizesForOrientation(button.dataset.orientation);
 }));
 setCanvasFormat(size.value);
 const frame = document.querySelector('#frame');
