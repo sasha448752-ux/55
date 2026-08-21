@@ -4,7 +4,7 @@ create table public.orders (
   id uuid primary key, created_at timestamptz not null default now(), full_name text not null,
   customer_id uuid references auth.users(id) on delete set null,
   phone text not null, email text, address text not null, comment text, canvas_size text not null,
-  price_kop integer not null, photo_path text not null, crop_position jsonb not null default '{"x":50,"y":50}'::jsonb, telegram_notified_at timestamptz,
+  price_kop integer not null, photo_path text not null, crop_position jsonb not null default '{"x":50,"y":50}'::jsonb, account_claim_token uuid unique, telegram_notified_at timestamptz,
   status text not null default 'new' check (status in ('new','in_progress','shipped','done','cancelled'))
 );
 alter table public.admin_users enable row level security;

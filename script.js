@@ -290,15 +290,20 @@ document.querySelector('#checkout-form').addEventListener('submit', async event 
   const supabaseClient = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
   const {data:{user}} = await supabaseClient.auth.getUser();
   const form = new FormData(event.currentTarget);
+  const customerEmail = String(form.get('email') || user?.email || '').trim().toLowerCase();
+  if (!customerEmail) { checkoutStatus.textContent='Укажите email для подтверждения заказа и создания личного кабинета.'; submit.disabled=false; return; }
+  const guestOrderClaims = [];
   for (const item of cart) {
     const orderId = crypto.randomUUID();
+    const accountClaimToken = user ? null : crypto.randomUUID();
     const safeName = item.file.name.toLowerCase().replace(/[^a-z0-9._-]/g,'-');
     const photoPath = `${orderId}/${safeName}`;
     const {error:uploadError} = await supabaseClient.storage.from('order-photos').upload(photoPath,item.file,{contentType:item.file.type,upsert:false});
     if(uploadError){ checkoutStatus.textContent=uploadError.message; submit.disabled=false; return; }
-    const order = {id:orderId,customer_id:user?.id||null,full_name:form.get('full_name'),phone:form.get('phone'),email:form.get('email')||user?.email||null,address:form.get('address'),comment:form.get('comment')||null,canvas_size:item.size,price_kop:item.price*100,photo_path:photoPath,crop_position:item.crop||{x:50,y:50}};
+    const order = {id:orderId,customer_id:user?.id||null,full_name:form.get('full_name'),phone:form.get('phone'),email:customerEmail,address:form.get('address'),comment:form.get('comment')||null,canvas_size:item.size,price_kop:item.price*100,photo_path:photoPath,crop_position:item.crop||{x:50,y:50},account_claim_token:accountClaimToken};
     const {error:orderError} = await supabaseClient.from('orders').insert(order);
     if(orderError){ checkoutStatus.textContent=orderError.message; submit.disabled=false; return; }
+    if (accountClaimToken) guestOrderClaims.push({ orderId, claimToken: accountClaimToken });
     try {
       const { error: telegramError } = await supabaseClient.functions.invoke('telegram-order-notify', { body: { orderId } });
       if (telegramError) console.warn('Telegram notification was not sent:', telegramError.message);
@@ -306,7 +311,23 @@ document.querySelector('#checkout-form').addEventListener('submit', async event 
       console.warn('Telegram notification was not sent:', telegramError);
     }
   }
-  checkoutStatus.textContent='Заказ принят! Мы свяжемся с вами для подтверждения.'; checkoutStatus.classList.add('success'); cart.length=0; renderCart(); event.currentTarget.reset(); setTimeout(()=>{closeCheckout();closeCart();},2400);
+  let accountMessage = '';
+  if (guestOrderClaims.length) {
+    try {
+      const { data, error } = await supabaseClient.functions.invoke('create-customer-account', {
+        body: { email: customerEmail, fullName: form.get('full_name'), orders: guestOrderClaims },
+      });
+      if (error || !data?.invited) {
+        accountMessage = ' Войдите в существующий кабинет, чтобы видеть будущие заказы.';
+      } else {
+        accountMessage = ' На email отправлена ссылка для установки пароля от личного кабинета.';
+      }
+    } catch (accountError) {
+      console.warn('Customer account invitation was not sent:', accountError);
+      accountMessage = ' Ссылка для доступа в кабинет будет доступна после повторного оформления.';
+    }
+  }
+  checkoutStatus.textContent=`Заказ принят! Мы свяжемся с вами для подтверждения.${accountMessage}`; checkoutStatus.classList.add('success'); cart.length=0; renderCart(); event.currentTarget.reset(); setTimeout(()=>{closeCheckout();closeCart();},4200);
 });
 document.querySelector('.menu-toggle').addEventListener('click', () => { const nav=document.querySelector('.site-header nav'); nav.classList.toggle('open'); });
 

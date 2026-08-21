@@ -87,7 +87,7 @@
       <button class="close-checkout" type="button" aria-label="Закрыть">×</button>
       <h2>Оформление заказа</h2>
       <p class="checkout-note">Фотохолст <b id="checkout-size">60 × 40 см</b> — <b id="checkout-price">1 990 ₽</b></p>
-      <label>Ваше имя<input name="full_name" required autocomplete="name"></label><label>Телефон<input name="phone" type="tel" required autocomplete="tel" placeholder="+7 999 000-00-00"></label><label>Email<input name="email" type="email" autocomplete="email" placeholder="name@example.com"></label><label>Адрес доставки<textarea name="address" required rows="2" autocomplete="street-address"></textarea></label><label>Комментарий к заказу<textarea name="comment" rows="2"></textarea></label><p class="checkout-status" id="checkout-status" role="status" aria-live="polite"></p><button class="button dark" type="submit">Отправить заказ</button>
+      <label>Ваше имя<input name="full_name" required autocomplete="name"></label><label>Телефон<input name="phone" type="tel" required autocomplete="tel" placeholder="+7 999 000-00-00"></label><label>Email<input name="email" type="email" autocomplete="email" placeholder="name@example.com" required><small>После заказа на этот адрес придёт ссылка для установки пароля от личного кабинета.</small></label><label>Адрес доставки<textarea name="address" required rows="2" autocomplete="street-address"></textarea></label><label>Комментарий к заказу<textarea name="comment" rows="2"></textarea></label><p class="checkout-status" id="checkout-status" role="status" aria-live="polite"></p><button class="button dark" type="submit">Отправить заказ</button>
     </form>
   </div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
