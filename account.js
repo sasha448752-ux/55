@@ -26,7 +26,8 @@ const showAccount = async user => {
     return { ...order, photoUrl: photo?.signedUrl || '' };
   }));
   ordersList.innerHTML = ordersWithPhotos.map(order => {
-    const photo = order.photoUrl ? `<img class="order-photo" src="${escapeHtml(order.photoUrl)}" alt="Фотография для заказа №${escapeHtml(order.id.slice(0,8))}" style="aspect-ratio:${canvasRatio(order.canvas_size)}" loading="lazy">` : '<div class="order-photo order-photo-empty">Фото готовится</div>';
+    const ratio = canvasRatio(order.canvas_size);
+    const photo = order.photoUrl ? `<div class="order-photo-frame" style="aspect-ratio:${ratio}"><img class="order-photo" src="${escapeHtml(order.photoUrl)}" alt="Фотография для заказа №${escapeHtml(order.id.slice(0,8))}" loading="lazy"></div>` : `<div class="order-photo-frame order-photo-empty" style="aspect-ratio:${ratio}">Фото готовится</div>`;
     return `<article class="order">${photo}<div class="order-info"><h2>Заказ №${escapeHtml(order.id.slice(0,8))}</h2><p>${new Date(order.created_at).toLocaleDateString('ru-RU')} · Холст ${escapeHtml(order.canvas_size)}</p><span class="status">${escapeHtml(statusNames[order.status] || order.status)}</span></div><strong class="order-price">${(order.price_kop / 100).toLocaleString('ru-RU')} ₽</strong></article>`;
   }).join('');
 };
