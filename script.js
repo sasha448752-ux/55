@@ -24,20 +24,38 @@ const photoEffects = {
 };
 let activePhotoEffect = 'none';
 const applyPhotoEffect = () => { preview.style.filter = photoEffects[activePhotoEffect] || 'none'; };
-const createPrintFile = (file, effect) => {
-  if (!file || effect === 'none') return Promise.resolve(file);
+const createPrintFile = (file, effect, canvasSize, crop) => {
+  if (!file) return Promise.reject(new Error('Не удалось прочитать фотографию.'));
   return new Promise((resolve, reject) => {
     const source = new Image();
     const sourceUrl = URL.createObjectURL(file);
     const dispose = () => URL.revokeObjectURL(sourceUrl);
     source.onload = () => {
+      const [canvasWidth, canvasHeight] = getDimensions(canvasSize);
+      const targetRatio = canvasWidth / canvasHeight;
+      const sourceRatio = source.naturalWidth / source.naturalHeight;
+      let cropWidth = source.naturalWidth;
+      let cropHeight = source.naturalHeight;
+      let cropX = 0;
+      let cropY = 0;
+      const positionX = clampCrop(crop?.x ?? 50) / 100;
+      const positionY = clampCrop(crop?.y ?? 50) / 100;
+      if (sourceRatio > targetRatio) {
+        cropWidth = source.naturalHeight * targetRatio;
+        cropX = (source.naturalWidth - cropWidth) * positionX;
+      } else if (sourceRatio < targetRatio) {
+        cropHeight = source.naturalWidth / targetRatio;
+        cropY = (source.naturalHeight - cropHeight) * positionY;
+      }
       const printCanvas = document.createElement('canvas');
-      printCanvas.width = source.naturalWidth;
-      printCanvas.height = source.naturalHeight;
+      // Keep every source pixel in the selected print area. No resizing and
+      // no JPEG recompression are used.
+      printCanvas.width = Math.round(cropWidth);
+      printCanvas.height = Math.round(cropHeight);
       const context = printCanvas.getContext('2d', { alpha: false });
       if (!context) { dispose(); reject(new Error('Не удалось подготовить фотографию.')); return; }
       context.filter = photoEffects[effect] || 'none';
-      context.drawImage(source, 0, 0, printCanvas.width, printCanvas.height);
+      context.drawImage(source, cropX, cropY, cropWidth, cropHeight, 0, 0, printCanvas.width, printCanvas.height);
       dispose();
       // PNG is lossless: only the requested visual effect changes the pixels.
       printCanvas.toBlob(blob => {
@@ -336,15 +354,15 @@ document.querySelector('#checkout-form').addEventListener('submit', async event 
     const accountClaimToken = user ? null : crypto.randomUUID();
     let printFile;
     try {
-      checkoutStatus.textContent = item.photoEffect && item.photoEffect !== 'none' ? 'Применяем эффект к фото…' : 'Отправляем заказ…';
-      printFile = await createPrintFile(item.file, item.photoEffect || 'none');
+      checkoutStatus.textContent = 'Готовим выбранную область холста…';
+      printFile = await createPrintFile(item.file, item.photoEffect || 'none', item.size, item.crop);
     } catch (printError) {
       checkoutStatus.textContent = printError instanceof Error ? printError.message : 'Не удалось подготовить фотографию.';
       submit.disabled = false;
       return;
     }
     if (printFile.size > 50 * 1024 * 1024) {
-      checkoutStatus.textContent = 'Фото с эффектом получилось больше 50 МБ. Выберите файл меньшего размера.';
+      checkoutStatus.textContent = 'Выбранная область холста получилась больше 50 МБ. Выберите файл меньшего размера.';
       submit.disabled = false;
       return;
     }
