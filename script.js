@@ -15,7 +15,16 @@ const setCanvasFormat = value => {
   document.querySelectorAll('.orientation button').forEach(button => button.classList.toggle('active', button.dataset.orientation === format));
 };
 const sizeHint = document.querySelector('#size-hint');
-const allSizes = [...size.options].map(option => option.value);
+const allSizes = [...size.options]
+  .map(option => option.value)
+  .sort((first, second) => {
+    const [firstWidth, firstHeight] = getDimensions(first);
+    const [secondWidth, secondHeight] = getDimensions(second);
+    // Keep the menu easy to scan: small canvases first, then larger ones.
+    return firstWidth * firstHeight - secondWidth * secondHeight
+      || Math.max(firstWidth, firstHeight) - Math.max(secondWidth, secondHeight)
+      || firstWidth - secondWidth;
+  });
 const printDpi = 120;
 const formatFor = (width, height) => width === height ? 'square' : width > height ? 'landscape' : 'portrait';
 const requiredPixels = centimeters => Math.ceil(centimeters / 2.54 * printDpi);
