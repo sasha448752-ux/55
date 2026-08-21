@@ -4,7 +4,7 @@ const corsHeaders = {
   // This endpoint creates authentication invitations, so it accepts calls only
   // from the published CANVASO storefront rather than every website.
   'Access-Control-Allow-Origin': 'https://sasha448752-ux.github.io',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-api-version',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 const response = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
@@ -56,14 +56,21 @@ Deno.serve(async request => {
     data: { full_name: fullName },
     redirectTo: accountRedirectUrl,
   });
-  if (invitationError || !invitation.user) {
-    // Do not reveal whether an email address has an existing account.
-    return response({ invited: false }, 200);
+  let customerId = invitation.user?.id;
+  let invited = Boolean(customerId && !invitationError);
+  if (!customerId) {
+    // The email may already have an account. The order claim was validated
+    // above, so it is safe to attach only those matching orders to that user.
+    const { data: userPage, error: userError } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+    const existingUser = userPage?.users.find(user => String(user.email || '').toLowerCase() === email);
+    if (userError || !existingUser) return response({ invited: false }, 200);
+    customerId = existingUser.id;
+    invited = false;
   }
   const { error: updateError } = await admin.from('orders')
-    .update({ customer_id: invitation.user.id, account_claim_token: null })
+    .update({ customer_id: customerId, account_claim_token: null })
     .in('id', orderIds)
     .is('customer_id', null);
   if (updateError) return response({ error: 'Could not attach orders' }, 500);
-  return response({ invited: true });
+  return response({ invited });
 });

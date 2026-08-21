@@ -386,14 +386,25 @@ document.querySelector('#checkout-form').addEventListener('submit', async event 
       console.warn('Telegram notification was not sent:', telegramError);
     }
   }));
+  let accountMessage = '';
   if (guestOrderClaims.length) {
-    void supabaseClient.functions.invoke('create-customer-account', {
-      body: { email: customerEmail, fullName: form.get('full_name'), orders: guestOrderClaims },
-    }).then(({ error }) => {
-      if (error) console.warn('Customer account invitation was not sent:', error.message);
-    }).catch(accountError => console.warn('Customer account invitation was not sent:', accountError));
+    try {
+      const { data, error } = await supabaseClient.functions.invoke('create-customer-account', {
+        body: { email: customerEmail, fullName: form.get('full_name'), orders: guestOrderClaims },
+      });
+      if (error) {
+        console.warn('Customer account invitation was not sent:', error.message);
+        accountMessage = ' Войдите в существующий кабинет, чтобы видеть будущие заказы.';
+      } else if (data?.invited) {
+        accountMessage = ' На email отправлена ссылка для установки пароля от личного кабинета.';
+      } else {
+        accountMessage = ' Заказ привязан к вашему личному кабинету.';
+      }
+    } catch (accountError) {
+      console.warn('Customer account invitation was not sent:', accountError);
+      accountMessage = ' Войдите в существующий кабинет, чтобы видеть будущие заказы.';
+    }
   }
-  const accountMessage = guestOrderClaims.length ? ' На email придёт ссылка для установки пароля от личного кабинета.' : '';
   checkoutStatus.textContent=`Заказ принят! Мы свяжемся с вами для подтверждения.${accountMessage}`; checkoutStatus.classList.add('success'); cart.length=0; renderCart(); event.currentTarget.reset(); setTimeout(()=>{closeCheckout();closeCart();},4200);
 });
 document.querySelector('.menu-toggle').addEventListener('click', () => { const nav=document.querySelector('.site-header nav'); nav.classList.toggle('open'); });
