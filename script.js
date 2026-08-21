@@ -15,6 +15,15 @@ const setCanvasFormat = value => {
   document.querySelectorAll('.orientation button').forEach(button => button.classList.toggle('active', button.dataset.orientation === format));
 };
 const sizeHint = document.querySelector('#size-hint');
+const photoEffects = {
+  none: 'none',
+  black_white: 'grayscale(1)',
+  warm: 'sepia(.28) saturate(1.16) brightness(1.04)',
+  vintage: 'sepia(.42) saturate(.78) contrast(.9) brightness(1.06)',
+  contrast: 'contrast(1.18) saturate(1.12)',
+};
+let activePhotoEffect = 'none';
+const applyPhotoEffect = () => { preview.style.filter = photoEffects[activePhotoEffect] || 'none'; };
 const allSizes = [...size.options]
   .map(option => option.value)
   .sort((first, second) => {
@@ -173,17 +182,18 @@ document.querySelectorAll('.orientation button').forEach(button => button.addEve
   showSizesForOrientation(button.dataset.orientation);
 }));
 setCanvasFormat(size.value);
-const frame = document.querySelector('#frame');
-const effect = document.querySelector('#effect');
-frame?.addEventListener('change', () => { canvas.classList.toggle('frame-light', frame.value === 'light'); canvas.classList.toggle('frame-dark', frame.value === 'dark'); });
-effect?.addEventListener('change', () => { canvas.classList.toggle('warm', effect.value === 'warm'); preview.style.filter = effect.value === 'gray' ? 'grayscale(1)' : effect.value === 'warm' ? 'sepia(.25) saturate(1.15)' : 'none'; });
 document.querySelector('.change-size').addEventListener('click', () => {
   size.scrollIntoView({behavior:'smooth', block:'center'});
   size.focus({preventScroll:true});
   if (typeof size.showPicker === 'function') size.showPicker();
   else size.click();
 });
-document.querySelectorAll('.toggle button').forEach(button => button.addEventListener('click', () => { document.querySelector('.toggle .active').classList.remove('active'); button.classList.add('active'); preview.style.filter=button.dataset.filter==='gray'?'grayscale(1)':'none'; }));
+document.querySelectorAll('.effect-toggle button').forEach(button => button.addEventListener('click', () => {
+  document.querySelector('.effect-toggle .active')?.classList.remove('active');
+  button.classList.add('active');
+  activePhotoEffect = button.dataset.effect || 'none';
+  applyPhotoEffect();
+}));
 const inspirationBefore = document.querySelector('.inspiration-photo.before');
 const inspirationAfter = document.querySelector('.inspiration-photo.after');
 const inspirationExamples = [
@@ -265,7 +275,7 @@ const addToCart = () => {
   const file = input.files[0];
   if (!file) return;
   cartPhotoUrls.add(preview.src);
-  cart.push({ image: preview.src, file, size: sizeLabel.textContent, priceText: price.textContent, price: priceNumber(price.textContent), crop: { ...cropPosition } });
+  cart.push({ image: preview.src, file, size: sizeLabel.textContent, priceText: price.textContent, price: priceNumber(price.textContent), crop: { ...cropPosition }, photoEffect: activePhotoEffect });
   renderCart();
 };
 document.querySelector('.add-to-cart').addEventListener('click', () => { addToCart(); const toast=document.querySelector('#toast'); toast.classList.add('visible'); setTimeout(() => toast.classList.remove('visible'), 2600); openCart(); });
@@ -300,7 +310,7 @@ document.querySelector('#checkout-form').addEventListener('submit', async event 
     const photoPath = `${orderId}/${safeName}`;
     const {error:uploadError} = await supabaseClient.storage.from('order-photos').upload(photoPath,item.file,{contentType:item.file.type,upsert:false});
     if(uploadError){ checkoutStatus.textContent=uploadError.message; submit.disabled=false; return; }
-    const order = {id:orderId,customer_id:user?.id||null,full_name:form.get('full_name'),phone:form.get('phone'),email:customerEmail,address:form.get('address'),comment:form.get('comment')||null,canvas_size:item.size,price_kop:item.price*100,photo_path:photoPath,crop_position:item.crop||{x:50,y:50},account_claim_token:accountClaimToken};
+    const order = {id:orderId,customer_id:user?.id||null,full_name:form.get('full_name'),phone:form.get('phone'),email:customerEmail,address:form.get('address'),comment:form.get('comment')||null,canvas_size:item.size,price_kop:item.price*100,photo_path:photoPath,crop_position:item.crop||{x:50,y:50},photo_effect:item.photoEffect||'none',account_claim_token:accountClaimToken};
     const {error:orderError} = await supabaseClient.from('orders').insert(order);
     if(orderError){ checkoutStatus.textContent=orderError.message; submit.disabled=false; return; }
     if (accountClaimToken) guestOrderClaims.push({ orderId, claimToken: accountClaimToken });

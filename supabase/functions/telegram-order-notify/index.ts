@@ -51,7 +51,7 @@ Deno.serve(async request => {
   const supabase = createClient(supabaseUrl, serviceRoleKey);
   const { data: order, error: orderError } = await supabase
     .from('orders')
-    .select('id, created_at, full_name, phone, email, address, comment, canvas_size, price_kop, photo_path, crop_position, telegram_notified_at')
+    .select('id, created_at, full_name, phone, email, address, comment, canvas_size, price_kop, photo_path, crop_position, photo_effect, telegram_notified_at')
     .eq('id', orderId)
     .single();
 
@@ -66,11 +66,13 @@ Deno.serve(async request => {
   };
   const cropX = cropCoordinate(crop.x);
   const cropY = cropCoordinate(crop.y);
+  const effectNames: Record<string, string> = { none: 'Без эффекта', black_white: 'Ч/Б', warm: 'Тёплый свет', vintage: 'Винтаж', contrast: 'Контраст' };
   const text = [
     '🆕 <b>Новый заказ на холст</b>',
     `<b>Заказ:</b> #${escapeHtml(order.id.slice(0, 8))}`,
     `<b>Размер:</b> ${escapeHtml(order.canvas_size)}`,
     `<b>Кадрирование:</b> ${cropX}% по горизонтали, ${cropY}% по вертикали`,
+    `<b>Эффект:</b> ${effectNames[String(order.photo_effect)] || 'Без эффекта'}`,
     `<b>Сумма:</b> ${price} ₽`,
     '',
     `<b>Клиент:</b> ${escapeHtml(order.full_name)}`,
