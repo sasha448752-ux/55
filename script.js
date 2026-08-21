@@ -101,6 +101,7 @@ const showSizesForOrientation = (orientation, preferredValue) => {
 let activePhotoUrl = null;
 let activeImageSize = null;
 let cropPosition = { x: 50, y: 50 };
+let cropDrag = null;
 const cropControls = document.querySelector('#crop-controls');
 const resetCropButton = document.querySelector('#reset-crop');
 const clampCrop = value => Math.max(0, Math.min(100, value));
@@ -108,8 +109,12 @@ const applyCrop = () => {
   preview.style.objectPosition = `${cropPosition.x}% ${cropPosition.y}%`;
 };
 const resetCrop = () => {
+  if (cropDrag && canvas.hasPointerCapture?.(cropDrag.id)) canvas.releasePointerCapture(cropDrag.id);
+  cropDrag = null;
+  canvas.classList.remove('crop-dragging');
   cropPosition = { x: 50, y: 50 };
   applyCrop();
+  canvas.focus({ preventScroll: true });
 };
 const cropOverflow = () => {
   if (!activeImageSize) return { x: 0, y: 0 };
@@ -120,9 +125,10 @@ const cropOverflow = () => {
     y: Math.max(0, activeImageSize.height * scale - rect.height),
   };
 };
-let cropDrag = null;
 canvas.addEventListener('pointerdown', event => {
   if (!activeImageSize || (event.pointerType === 'mouse' && event.button !== 0)) return;
+  event.preventDefault();
+  canvas.focus({ preventScroll: true });
   cropDrag = { id: event.pointerId, startX: event.clientX, startY: event.clientY, cropX: cropPosition.x, cropY: cropPosition.y };
   canvas.setPointerCapture(event.pointerId);
   canvas.classList.add('crop-dragging');
@@ -141,6 +147,12 @@ const stopCropDrag = event => {
 };
 canvas.addEventListener('pointerup', stopCropDrag);
 canvas.addEventListener('pointercancel', stopCropDrag);
+canvas.addEventListener('lostpointercapture', event => {
+  if (cropDrag?.id === event.pointerId) {
+    cropDrag = null;
+    canvas.classList.remove('crop-dragging');
+  }
+});
 canvas.addEventListener('keydown', event => {
   if (!activeImageSize) return;
   const step = event.shiftKey ? 10 : 3;
