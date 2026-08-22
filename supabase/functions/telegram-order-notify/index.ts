@@ -25,6 +25,25 @@ const getServiceRoleKey = () => {
   return secretKeys ? JSON.parse(secretKeys).default : undefined;
 };
 
+const businessDaysToShip = 3;
+const formatMoscowDate = (value: Date) => new Intl.DateTimeFormat('ru-RU', {
+  timeZone: 'Europe/Moscow',
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+}).format(value);
+const shippingDeadline = (createdAt: string) => {
+  const deadline = new Date(createdAt);
+  deadline.setUTCHours(12, 0, 0, 0);
+  let addedDays = 0;
+  while (addedDays < businessDaysToShip) {
+    deadline.setUTCDate(deadline.getUTCDate() + 1);
+    const day = deadline.getUTCDay();
+    if (day !== 0 && day !== 6) addedDays += 1;
+  }
+  return deadline;
+};
+
 Deno.serve(async request => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (request.method !== 'POST') return response({ error: 'Method not allowed' }, 405);
@@ -66,10 +85,14 @@ Deno.serve(async request => {
   };
   const cropX = cropCoordinate(crop.x);
   const cropY = cropCoordinate(crop.y);
+  const orderedAt = new Date(order.created_at);
+  const deadline = shippingDeadline(order.created_at);
   const effectNames: Record<string, string> = { none: 'Без эффекта', black_white: 'Ч/Б', warm: 'Тёплый свет', vintage: 'Винтаж', contrast: 'Контраст' };
   const text = [
     '🆕 <b>Новый заказ на холст</b>',
     `<b>Заказ:</b> #${escapeHtml(order.id.slice(0, 8))}`,
+    `<b>Оформлен:</b> ${formatMoscowDate(orderedAt)}`,
+    `<b>Передать в доставку до:</b> ${formatMoscowDate(deadline)} (3 рабочих дня)`,
     `<b>Размер:</b> ${escapeHtml(order.canvas_size)}`,
     `<b>Кадрирование:</b> ${cropX}% по горизонтали, ${cropY}% по вертикали`,
     `<b>Эффект:</b> ${effectNames[String(order.photo_effect)] || 'Без эффекта'}`,
