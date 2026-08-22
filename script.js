@@ -477,6 +477,26 @@ document.querySelector('#checkout-form').addEventListener('submit', async event 
 });
 document.querySelector('.menu-toggle').addEventListener('click', () => { const nav=document.querySelector('.site-header nav'); nav.classList.toggle('open'); });
 
+// Keep the catalogue section easy to reach without leaving `#catalog` in
+// the public URL. Old shared links with that hash still scroll correctly.
+const catalogSection = document.querySelector('#catalog');
+const cleanCatalogUrl = () => {
+  history.replaceState(null, '', `${location.pathname}${location.search}`);
+};
+document.querySelectorAll('a[href="#catalog"]').forEach(link => {
+  link.addEventListener('click', event => {
+    event.preventDefault();
+    catalogSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    cleanCatalogUrl();
+  });
+});
+if (location.hash === '#catalog') {
+  window.requestAnimationFrame(() => {
+    catalogSection?.scrollIntoView({ block: 'start' });
+    cleanCatalogUrl();
+  });
+}
+
 // Third review card from the reference layout. It does not alter any images.
 const reviews = document.querySelector('.review-list');
 if (reviews && reviews.children.length === 2) {
