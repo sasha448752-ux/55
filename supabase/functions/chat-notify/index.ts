@@ -43,19 +43,19 @@ Deno.serve(async request => {
   }
   const name = normalize(body.name, 80) || null; const contact = normalize(body.contact, 160) || null; const text = normalize(body.message, 2000);
   if (!text) return json({ error: 'Напишите сообщение.' }, origin, 400);
-  const { data: existingConversation, error: existingConversationError } = await admin.from('chat_conversations').select('id').eq('visitor_token', visitorToken).maybeSingle();
+  const { data: existingConversation, error: existingConversationError } = await admin.from('chat_conversations').select('id,archived_at').eq('visitor_token', visitorToken).maybeSingle();
   if (existingConversationError) return json({ error: 'Не удалось открыть диалог.' }, origin, 502);
-  const isFirstMessageInConversation = !existingConversation;
+  const isNewOrReopenedConversation = !existingConversation || Boolean(existingConversation.archived_at);
   const { error: insertConversationError } = await admin.from('chat_conversations').upsert({ visitor_token: visitorToken, visitor_name: name, visitor_contact: contact }, { onConflict: 'visitor_token', ignoreDuplicates: true });
   if (insertConversationError) return json({ error: 'Не удалось открыть диалог.' }, origin, 502);
   const { data: conversation, error: conversationError } = await admin.from('chat_conversations').select('id').eq('visitor_token', visitorToken).single();
   if (conversationError || !conversation) return json({ error: 'Не удалось открыть диалог.' }, origin, 502);
   const { data: message, error: messageError } = await admin.from('chat_messages').insert({ conversation_id: conversation.id, sender: 'visitor', body: text }).select('id,sender,body,created_at').single();
   if (messageError || !message) return json({ error: 'Не удалось сохранить сообщение.' }, origin, 502);
-  await admin.from('chat_conversations').update({ last_message: text, last_sender: 'visitor', last_message_at: message.created_at, updated_at: message.created_at, visitor_name: name, visitor_contact: contact }).eq('id', conversation.id);
+  await admin.from('chat_conversations').update({ last_message: text, last_sender: 'visitor', last_message_at: message.created_at, updated_at: message.created_at, visitor_name: name, visitor_contact: contact, archived_at: null, archived_by: null }).eq('id', conversation.id);
   await broadcast(url, serviceKey, visitorToken, message);
   const telegramToken = Deno.env.get('TELEGRAM_BOT_TOKEN'); const telegramChatId = Deno.env.get('TELEGRAM_CHAT_ID');
-  if (isFirstMessageInConversation && telegramToken && telegramChatId) {
+  if (isNewOrReopenedConversation && telegramToken && telegramChatId) {
     const sentAt = new Intl.DateTimeFormat('ru-RU', { timeZone: 'Europe/Moscow', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).format(new Date());
     const telegramText = ['💬 Новое сообщение в чате CANVASO', `Время: ${sentAt} (МСК)`, '', 'Откройте раздел «Чаты с клиентами» в админке, чтобы прочитать и ответить.'].join('\n');
     const telegram = await fetch(`https://api.telegram.org/bot${telegramToken}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: telegramChatId, text: telegramText, disable_web_page_preview: true }) });

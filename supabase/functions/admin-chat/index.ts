@@ -21,16 +21,24 @@ Deno.serve(async request => {
   const { data: administrator } = await admin.from('admin_users').select('user_id').eq('user_id', user.id).maybeSingle(); if (!administrator) return json({ error: 'Forbidden' }, origin, 403);
   let body: Record<string, unknown>; try { body = await request.json(); } catch { return json({ error: 'Некорректный запрос.' }, origin, 400); }
   if (body.action === 'list') {
-    const { data, error } = await admin.from('chat_conversations').select('visitor_token,visitor_name,visitor_contact,last_message,last_sender,last_message_at,created_at').order('last_message_at', { ascending: false }).limit(100);
+    const archived = body.archived === true;
+    let query = admin.from('chat_conversations').select('visitor_token,visitor_name,visitor_contact,last_message,last_sender,last_message_at,created_at,archived_at').order('last_message_at', { ascending: false }).limit(100);
+    query = archived ? query.not('archived_at', 'is', null) : query.is('archived_at', null);
+    const { data, error } = await query;
     return error ? json({ error: 'Не удалось загрузить диалоги.' }, origin, 502) : json({ conversations: data || [] }, origin);
   }
   const visitorToken = String(body.conversationToken || ''); if (!uuidPattern.test(visitorToken)) return json({ error: 'Некорректный диалог.' }, origin, 400);
-  const { data: conversation, error: conversationError } = await admin.from('chat_conversations').select('id').eq('visitor_token', visitorToken).single(); if (conversationError || !conversation) return json({ error: 'Диалог не найден.' }, origin, 404);
+  const { data: conversation, error: conversationError } = await admin.from('chat_conversations').select('id,archived_at').eq('visitor_token', visitorToken).single(); if (conversationError || !conversation) return json({ error: 'Диалог не найден.' }, origin, 404);
   if (body.action === 'history') {
     const { data, error } = await admin.from('chat_messages').select('id,sender,body,created_at').eq('conversation_id', conversation.id).order('created_at', { ascending: true }).limit(100);
-    return error ? json({ error: 'Не удалось загрузить сообщения.' }, origin, 502) : json({ messages: data || [] }, origin);
+    return error ? json({ error: 'Не удалось загрузить сообщения.' }, origin, 502) : json({ messages: data || [], archived: Boolean(conversation.archived_at) }, origin);
+  }
+  if (body.action === 'archive') {
+    const { error } = await admin.from('chat_conversations').update({ archived_at: new Date().toISOString(), archived_by: user.id }).eq('id', conversation.id);
+    return error ? json({ error: 'Не удалось архивировать диалог.' }, origin, 502) : json({ archived: true }, origin);
   }
   if (body.action !== 'send') return json({ error: 'Неизвестное действие.' }, origin, 400);
+  if (conversation.archived_at) return json({ error: 'Диалог находится в архиве.' }, origin, 409);
   const text = messageText(body.message); if (!text) return json({ error: 'Напишите сообщение.' }, origin, 400);
   const { data: message, error } = await admin.from('chat_messages').insert({ conversation_id: conversation.id, sender: 'admin', body: text }).select('id,sender,body,created_at').single();
   if (error || !message) return json({ error: 'Не удалось отправить сообщение.' }, origin, 502);

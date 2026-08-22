@@ -137,9 +137,12 @@ const chatConversations = document.querySelector('#chat-conversations');
 const chatMessages = document.querySelector('#admin-chat-messages');
 const chatTitle = document.querySelector('#admin-chat-title');
 const chatReplyForm = document.querySelector('#admin-chat-form');
+const archiveChatButton = document.querySelector('#archive-chat');
+const archivedChatsToggle = document.querySelector('#toggle-archived-chats');
 let selectedConversationToken = null;
 let adminChatChannel = null;
 let chatPollingTimer = null;
+let showingArchivedChats = false;
 const adminChatRequest = async body => {
   const { data, error } = await client.functions.invoke('admin-chat', { body });
   if (error || data?.error) throw new Error(data?.error || error.message || 'Ошибка чата.');
@@ -163,10 +166,12 @@ const loadConversation = async token => {
   chatMessages.replaceChildren();
   chatTitle.textContent = 'Загружаем диалог…';
   chatReplyForm.hidden = true;
+  archiveChatButton.hidden = true;
   const data = await adminChatRequest({ action:'history', conversationToken: token });
   data.messages.forEach(renderAdminMessage);
-  chatTitle.textContent = 'Диалог с клиентом';
-  chatReplyForm.hidden = false;
+  chatTitle.textContent = data.archived ? 'Архивный диалог' : 'Диалог с клиентом';
+  chatReplyForm.hidden = Boolean(data.archived);
+  archiveChatButton.hidden = Boolean(data.archived);
   document.querySelectorAll('.admin-conversation').forEach(button => button.classList.toggle('active', button.dataset.token === token));
   if (adminChatChannel) client.removeChannel(adminChatChannel);
   adminChatChannel = client.channel(`canvaso:chat:${token}`)
@@ -176,9 +181,9 @@ const loadConversation = async token => {
 async function loadChats() {
   if (!chatConversations) return;
   try {
-    const { conversations } = await adminChatRequest({ action:'list' });
+    const { conversations } = await adminChatRequest({ action:'list', archived:showingArchivedChats });
     chatConversations.replaceChildren();
-    if (!conversations.length) { chatConversations.innerHTML = '<p class="empty-chats">Диалогов пока нет.</p>'; return; }
+    if (!conversations.length) { chatConversations.innerHTML = `<p class="empty-chats">${showingArchivedChats ? 'В архиве пока нет диалогов.' : 'Диалогов пока нет.'}</p>`; return; }
     conversations.forEach(conversation => {
       const button = document.createElement('button');
       button.type = 'button'; button.className = 'admin-conversation'; button.dataset.token = conversation.visitor_token;
@@ -192,6 +197,33 @@ async function loadChats() {
     chatConversations.innerHTML = `<p class="empty-chats">${esc(error.message || 'Не удалось загрузить чаты.')}</p>`;
   }
 }
+archivedChatsToggle.addEventListener('click', () => {
+  showingArchivedChats = !showingArchivedChats;
+  archivedChatsToggle.textContent = showingArchivedChats ? 'Показать активные' : 'Показать архив';
+  selectedConversationToken = null;
+  chatMessages.replaceChildren();
+  chatTitle.textContent = showingArchivedChats ? 'Выберите диалог из архива' : 'Выберите диалог';
+  chatReplyForm.hidden = true;
+  archiveChatButton.hidden = true;
+  void loadChats();
+});
+archiveChatButton.addEventListener('click', async () => {
+  if (!selectedConversationToken || !window.confirm('Завершить диалог и переместить его в архив? Переписка сохранится.')) return;
+  archiveChatButton.disabled = true;
+  try {
+    await adminChatRequest({ action:'archive', conversationToken:selectedConversationToken });
+    selectedConversationToken = null;
+    chatMessages.replaceChildren();
+    chatTitle.textContent = 'Диалог архивирован';
+    chatReplyForm.hidden = true;
+    archiveChatButton.hidden = true;
+    await loadChats();
+  } catch (error) {
+    chatTitle.textContent = error instanceof Error ? error.message : 'Не удалось архивировать диалог.';
+  } finally {
+    archiveChatButton.disabled = false;
+  }
+});
 const startChatPolling = () => {
   if (chatPollingTimer || !client) return;
   chatPollingTimer = window.setInterval(() => { void loadChats(); }, 5000);
