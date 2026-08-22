@@ -33,19 +33,25 @@ Deno.serve(async request => {
 
   let body: Record<string, unknown>;
   try { body = await request.json(); } catch { return json({ error: 'Некорректный запрос.' }, origin, 400); }
-  if (body.action !== 'delete') return json({ error: 'Неизвестное действие.' }, origin, 400);
-  const orderId = String(body.orderId || '').trim();
-  if (!uuidPattern.test(orderId)) return json({ error: 'Некорректный номер заказа.' }, origin, 400);
+  const requestedIds = body.action === 'delete'
+    ? [String(body.orderId || '').trim()]
+    : body.action === 'delete_many' && Array.isArray(body.orderIds)
+      ? [...new Set(body.orderIds.map(id => String(id || '').trim()))]
+      : [];
+  if (!requestedIds.length || requestedIds.length > 50 || requestedIds.some(id => !uuidPattern.test(id))) {
+    return json({ error: 'Выберите от 1 до 50 корректных заказов.' }, origin, 400);
+  }
 
-  const { data: order, error: orderError } = await admin.from('orders').select('id,status,photo_path').eq('id', orderId).maybeSingle();
-  if (orderError || !order) return json({ error: 'Заказ не найден.' }, origin, 404);
-  if (order.status !== 'done') return json({ error: 'Удалять можно только завершённые заказы.' }, origin, 409);
+  const { data: orders, error: ordersError } = await admin.from('orders').select('id,status,photo_path').in('id', requestedIds);
+  if (ordersError || !orders || orders.length !== requestedIds.length) return json({ error: 'Один или несколько заказов не найдены.' }, origin, 404);
+  if (orders.some(order => order.status !== 'done')) return json({ error: 'Удалять можно только завершённые заказы.' }, origin, 409);
 
-  if (order.photo_path) {
-    const { error: photoError } = await admin.storage.from('order-photos').remove([order.photo_path]);
+  const photoPaths = orders.map(order => order.photo_path).filter((path): path is string => Boolean(path));
+  if (photoPaths.length) {
+    const { error: photoError } = await admin.storage.from('order-photos').remove(photoPaths);
     if (photoError) return json({ error: 'Не удалось удалить фотографию заказа.' }, origin, 502);
   }
-  const { error: deleteError } = await admin.from('orders').delete().eq('id', order.id);
+  const { error: deleteError } = await admin.from('orders').delete().in('id', requestedIds);
   if (deleteError) return json({ error: 'Не удалось удалить заказ.' }, origin, 502);
-  return json({ deleted: true }, origin);
+  return json({ deleted: orders.length }, origin);
 });

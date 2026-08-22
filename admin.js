@@ -4,16 +4,25 @@ const login = document.querySelector('#login');
 const panel = document.querySelector('#orders-panel');
 const errorText = document.querySelector('#login-error');
 const list = document.querySelector('#orders');
+const bulkOrderActions = document.querySelector('#bulk-order-actions');
+const selectedOrderCount = document.querySelector('#selected-order-count');
+const deleteSelectedOrdersButton = document.querySelector('#delete-selected-orders');
+const selectedOrderIds = new Set();
 const esc = value => String(value || '').replace(/[&<>"']/g, character => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[character]));
 const cropValue = value => {
   const number = Number(value);
   return Number.isFinite(number) ? Math.round(Math.max(0, Math.min(100, number))) : 50;
 };
 const effectNames = { none:'Без эффекта', black_white:'Ч/Б', warm:'Тёплый свет', vintage:'Винтаж', contrast:'Контраст' };
-const deleteCompletedOrder = async orderId => {
-  const { data, error } = await client.functions.invoke('admin-order', { body: { action:'delete', orderId } });
+const deleteCompletedOrders = async orderIds => {
+  const body = orderIds.length === 1 ? { action:'delete', orderId:orderIds[0] } : { action:'delete_many', orderIds };
+  const { data, error } = await client.functions.invoke('admin-order', { body });
   if (error || data?.error) throw new Error(data?.error || error.message || 'Не удалось удалить заказ.');
   return data;
+};
+const updateBulkOrderActions = () => {
+  bulkOrderActions.hidden = selectedOrderIds.size === 0;
+  selectedOrderCount.textContent = `Выбрано: ${selectedOrderIds.size}`;
 };
 
 const sendStatusNotification = async (orderId, message) => {
@@ -40,7 +49,10 @@ const sendStatusNotification = async (orderId, message) => {
 async function loadOrders() {
   const { data, error } = await client.from('orders').select('*').order('created_at', { ascending:false });
   if (error) { list.textContent = 'Нет доступа: добавьте пользователя в admin_users.'; return; }
-  if (!data.length) { list.textContent = 'Заказов пока нет.'; return; }
+  if (!data.length) { selectedOrderIds.clear(); updateBulkOrderActions(); list.textContent = 'Заказов пока нет.'; return; }
+  const availableIds = new Set(data.map(order => order.id));
+  selectedOrderIds.forEach(id => { if (!availableIds.has(id)) selectedOrderIds.delete(id); });
+  updateBulkOrderActions();
   list.innerHTML = '';
   for (const order of data) {
     const { data: photo } = await client.storage.from('order-photos').createSignedUrl(order.photo_path, 3600);
@@ -49,12 +61,20 @@ async function loadOrders() {
     const photoEffect = effectNames[order.photo_effect] || effectNames.none;
     const element = document.createElement('article');
     element.className = 'order';
-    element.innerHTML = `<img src="${photo?.signedUrl || ''}" alt="Фотография к заказу" style="object-position:${cropX}% ${cropY}%"><div><h2>Заказ #${esc(order.id.slice(0, 8))} · ${esc(order.canvas_size)}</h2><p><b>${esc(order.full_name)}</b> · ${esc(order.phone)} · ${esc(order.email || '—')}</p><p>${esc(order.address)}</p><p>${esc(order.comment || 'Без комментария')} · ${(order.price_kop / 100).toLocaleString('ru-RU')} ₽</p><p>Кадрирование: ${cropX}% по горизонтали, ${cropY}% по вертикали</p><p>Эффект: ${esc(photoEffect)}</p></div><div class="order-status"><select aria-label="Статус заказа"><option value="new">Новый</option><option value="in_progress">В работе</option><option value="shipped">Отправлен</option><option value="done">Готов</option><option value="cancelled">Отменён</option></select><button class="order-delete" type="button" hidden>Удалить заказ</button><p class="notification-message" role="status"></p></div>`;
+    element.innerHTML = `<img src="${photo?.signedUrl || ''}" alt="Фотография к заказу" style="object-position:${cropX}% ${cropY}%"><div><h2>Заказ #${esc(order.id.slice(0, 8))} · ${esc(order.canvas_size)}</h2><p><b>${esc(order.full_name)}</b> · ${esc(order.phone)} · ${esc(order.email || '—')}</p><p>${esc(order.address)}</p><p>${esc(order.comment || 'Без комментария')} · ${(order.price_kop / 100).toLocaleString('ru-RU')} ₽</p><p>Кадрирование: ${cropX}% по горизонтали, ${cropY}% по вертикали</p><p>Эффект: ${esc(photoEffect)}</p></div><div class="order-status"><select aria-label="Статус заказа"><option value="new">Новый</option><option value="in_progress">В работе</option><option value="shipped">Отправлен</option><option value="done">Готов</option><option value="cancelled">Отменён</option></select><label class="order-select" hidden><input type="checkbox"> Выбрать</label><button class="order-delete" type="button" hidden>Удалить заказ</button><p class="notification-message" role="status"></p></div>`;
     const select = element.querySelector('select');
+    const orderSelect = element.querySelector('.order-select');
+    const selectCheckbox = orderSelect.querySelector('input');
     const deleteButton = element.querySelector('.order-delete');
     const message = element.querySelector('.notification-message');
     select.value = order.status;
+    orderSelect.hidden = order.status !== 'done';
     deleteButton.hidden = order.status !== 'done';
+    selectCheckbox.checked = selectedOrderIds.has(order.id);
+    selectCheckbox.addEventListener('change', () => {
+      if (selectCheckbox.checked) selectedOrderIds.add(order.id); else selectedOrderIds.delete(order.id);
+      updateBulkOrderActions();
+    });
     select.addEventListener('change', async () => {
       select.disabled = true;
       message.textContent = 'Сохраняем статус…';
@@ -67,7 +87,9 @@ async function loadOrders() {
         return;
       }
       order.status = select.value;
+      orderSelect.hidden = order.status !== 'done';
       deleteButton.hidden = order.status !== 'done';
+      if (order.status !== 'done') { selectCheckbox.checked = false; selectedOrderIds.delete(order.id); updateBulkOrderActions(); }
       await sendStatusNotification(order.id, message);
       select.disabled = false;
     });
@@ -77,7 +99,9 @@ async function loadOrders() {
       message.textContent = 'Удаляем заказ…';
       message.classList.remove('success');
       try {
-        await deleteCompletedOrder(order.id);
+        await deleteCompletedOrders([order.id]);
+        selectedOrderIds.delete(order.id);
+        updateBulkOrderActions();
         element.remove();
         if (!list.children.length) list.textContent = 'Заказов пока нет.';
       } catch (error) {
@@ -88,6 +112,26 @@ async function loadOrders() {
     list.append(element);
   }
 }
+
+deleteSelectedOrdersButton.addEventListener('click', async () => {
+  const orderIds = [...selectedOrderIds];
+  if (!orderIds.length) return;
+  if (!window.confirm(`Удалить ${orderIds.length} завершённых заказ(а/ов) вместе с фотографиями? Восстановить их будет нельзя.`)) return;
+  deleteSelectedOrdersButton.disabled = true;
+  const originalText = deleteSelectedOrdersButton.textContent;
+  deleteSelectedOrdersButton.textContent = 'Удаляем…';
+  try {
+    await deleteCompletedOrders(orderIds);
+    selectedOrderIds.clear();
+    updateBulkOrderActions();
+    await loadOrders();
+  } catch (error) {
+    window.alert(error instanceof Error ? error.message : 'Не удалось удалить заказы.');
+  } finally {
+    deleteSelectedOrdersButton.disabled = false;
+    deleteSelectedOrdersButton.textContent = originalText;
+  }
+});
 
 const chatConversations = document.querySelector('#chat-conversations');
 const chatMessages = document.querySelector('#admin-chat-messages');
