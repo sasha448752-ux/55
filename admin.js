@@ -73,6 +73,7 @@ const chatTitle = document.querySelector('#admin-chat-title');
 const chatReplyForm = document.querySelector('#admin-chat-form');
 let selectedConversationToken = null;
 let adminChatChannel = null;
+let chatPollingTimer = null;
 const adminChatRequest = async body => {
   const { data, error } = await client.functions.invoke('admin-chat', { body });
   if (error || data?.error) throw new Error(data?.error || error.message || 'Ошибка чата.');
@@ -125,6 +126,15 @@ async function loadChats() {
     chatConversations.innerHTML = `<p class="empty-chats">${esc(error.message || 'Не удалось загрузить чаты.')}</p>`;
   }
 }
+const startChatPolling = () => {
+  if (chatPollingTimer || !client) return;
+  chatPollingTimer = window.setInterval(() => { void loadChats(); }, 5000);
+};
+const stopChatPolling = () => {
+  if (!chatPollingTimer) return;
+  window.clearInterval(chatPollingTimer);
+  chatPollingTimer = null;
+};
 chatReplyForm.addEventListener('submit', async event => {
   event.preventDefault();
   if (!selectedConversationToken) return;
@@ -152,6 +162,7 @@ document.querySelector('#login-form').onsubmit = async event => {
   panel.hidden = false;
   loadOrders();
   loadChats();
+  startChatPolling();
 };
-document.querySelector('#logout').onclick = async () => { await client.auth.signOut(); panel.hidden = true; login.hidden = false; };
-if (client) client.auth.getSession().then(({ data }) => { if (data.session) { login.hidden = true; panel.hidden = false; loadOrders(); loadChats(); } });
+document.querySelector('#logout').onclick = async () => { await client.auth.signOut(); stopChatPolling(); panel.hidden = true; login.hidden = false; };
+if (client) client.auth.getSession().then(({ data }) => { if (data.session) { login.hidden = true; panel.hidden = false; loadOrders(); loadChats(); startChatPolling(); } });
