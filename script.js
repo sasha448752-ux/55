@@ -477,17 +477,56 @@ document.querySelector('#checkout-form').addEventListener('submit', async event 
 });
 document.querySelector('.menu-toggle').addEventListener('click', () => { const nav=document.querySelector('.site-header nav'); nav.classList.toggle('open'); });
 
-// Support messages are delivered by an Edge Function: the Telegram bot token
-// is never present in the browser or in the public site files.
+// Support messages are delivered by Edge Functions. A locally stored random
+// conversation token lets a visitor see only their own dialog in real time.
 const chatLaunch = document.querySelector('#chat-launch');
 const chatModal = document.querySelector('#chat-modal');
 const chatForm = document.querySelector('#chat-form');
 const chatStatus = document.querySelector('#chat-status');
+const chatTranscript = document.querySelector('.chat-transcript');
+const chatStorageKey = 'canvaso-chat-conversation';
+let chatClient;
+let chatChannel;
+let chatLoaded = false;
+const conversationToken = () => {
+  let token = localStorage.getItem(chatStorageKey);
+  if (!token) { token = crypto.randomUUID(); localStorage.setItem(chatStorageKey, token); }
+  return token;
+};
+const renderChatMessage = message => {
+  if (!message?.id || chatTranscript.querySelector(`[data-message-id="${message.id}"]`)) return;
+  const bubble = document.createElement('p');
+  bubble.className = `chat-bubble ${message.sender === 'admin' ? 'from-admin' : 'from-visitor'}`;
+  bubble.dataset.messageId = message.id;
+  bubble.textContent = message.body;
+  chatTranscript.append(bubble);
+  chatTranscript.scrollTop = chatTranscript.scrollHeight;
+};
+const openChatConnection = async () => {
+  if (!window.supabase || !window.SUPABASE_URL || !window.SUPABASE_ANON_KEY) return;
+  chatClient ||= window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+  const token = conversationToken();
+  if (!chatChannel) {
+    chatChannel = chatClient.channel(`canvaso:chat:${token}`)
+      .on('broadcast', { event: 'message' }, payload => renderChatMessage(payload.payload))
+      .subscribe();
+  }
+  if (!chatLoaded) {
+    const { data, error } = await chatClient.functions.invoke('chat-notify', { body: { action: 'history', conversationToken: token } });
+    if (!error && Array.isArray(data?.messages)) {
+      chatTranscript.replaceChildren();
+      data.messages.forEach(renderChatMessage);
+      if (!data.messages.length) chatTranscript.innerHTML = '<p class="chat-greeting">Здравствуйте! Напишите ваш вопрос — сообщение сразу поступит менеджеру.</p>';
+      chatLoaded = true;
+    }
+  }
+};
 const openChat = () => {
   chatStatus.textContent = '';
   chatStatus.classList.remove('success');
   chatModal.classList.add('open');
   chatModal.setAttribute('aria-hidden', 'false');
+  void openChatConnection();
   window.setTimeout(() => chatForm.elements.message.focus(), 50);
 };
 const closeChat = () => {
@@ -510,9 +549,10 @@ chatForm.addEventListener('submit', async event => {
   chatStatus.classList.remove('success');
   chatStatus.textContent = 'Отправляем сообщение…';
   try {
-    const client = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
-    const { data, error } = await client.functions.invoke('chat-notify', {
+    await openChatConnection();
+    const { data, error } = await chatClient.functions.invoke('chat-notify', {
       body: {
+        action: 'send', conversationToken: conversationToken(),
         name: String(form.get('name') || ''),
         contact: String(form.get('contact') || ''),
         message: String(form.get('message') || ''),
@@ -520,10 +560,10 @@ chatForm.addEventListener('submit', async event => {
       },
     });
     if (error || !data?.sent) throw new Error(data?.error || error?.message || 'Не удалось отправить сообщение.');
-    chatStatus.textContent = 'Сообщение отправлено. Скоро вам ответим.';
+    renderChatMessage(data.message);
+    chatStatus.textContent = 'Сообщение отправлено.';
     chatStatus.classList.add('success');
     chatForm.reset();
-    window.setTimeout(closeChat, 1800);
   } catch (error) {
     chatStatus.textContent = error instanceof Error ? error.message : 'Не удалось отправить сообщение. Попробуйте позже.';
   } finally {

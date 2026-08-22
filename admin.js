@@ -67,6 +67,81 @@ async function loadOrders() {
   }
 }
 
+const chatConversations = document.querySelector('#chat-conversations');
+const chatMessages = document.querySelector('#admin-chat-messages');
+const chatTitle = document.querySelector('#admin-chat-title');
+const chatReplyForm = document.querySelector('#admin-chat-form');
+let selectedConversationToken = null;
+let adminChatChannel = null;
+const adminChatRequest = async body => {
+  const { data, error } = await client.functions.invoke('admin-chat', { body });
+  if (error || data?.error) throw new Error(data?.error || error.message || 'Ошибка чата.');
+  return data;
+};
+const chatDate = value => new Intl.DateTimeFormat('ru-RU', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }).format(new Date(value));
+const renderAdminMessage = message => {
+  if (!message?.id || chatMessages.querySelector(`[data-message-id="${message.id}"]`)) return;
+  const item = document.createElement('p');
+  item.className = `admin-message ${message.sender === 'admin' ? 'admin' : ''}`;
+  item.dataset.messageId = message.id;
+  item.textContent = message.body;
+  const time = document.createElement('small');
+  time.textContent = message.sender === 'admin' ? `Вы · ${chatDate(message.created_at)}` : `Клиент · ${chatDate(message.created_at)}`;
+  item.append(time);
+  chatMessages.append(item);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+};
+const loadConversation = async token => {
+  selectedConversationToken = token;
+  chatMessages.replaceChildren();
+  chatTitle.textContent = 'Загружаем диалог…';
+  chatReplyForm.hidden = true;
+  const data = await adminChatRequest({ action:'history', conversationToken: token });
+  data.messages.forEach(renderAdminMessage);
+  chatTitle.textContent = 'Диалог с клиентом';
+  chatReplyForm.hidden = false;
+  document.querySelectorAll('.admin-conversation').forEach(button => button.classList.toggle('active', button.dataset.token === token));
+  if (adminChatChannel) client.removeChannel(adminChatChannel);
+  adminChatChannel = client.channel(`canvaso:chat:${token}`)
+    .on('broadcast', { event:'message' }, payload => renderAdminMessage(payload.payload))
+    .subscribe();
+};
+async function loadChats() {
+  if (!chatConversations) return;
+  try {
+    const { conversations } = await adminChatRequest({ action:'list' });
+    chatConversations.replaceChildren();
+    if (!conversations.length) { chatConversations.innerHTML = '<p class="empty-chats">Диалогов пока нет.</p>'; return; }
+    conversations.forEach(conversation => {
+      const button = document.createElement('button');
+      button.type = 'button'; button.className = 'admin-conversation'; button.dataset.token = conversation.visitor_token;
+      const name = conversation.visitor_name || conversation.visitor_contact || 'Клиент';
+      button.innerHTML = `<strong>${esc(name)}</strong><small>${esc(conversation.last_message || '')}</small><small>${chatDate(conversation.last_message_at)}</small>`;
+      button.addEventListener('click', () => loadConversation(conversation.visitor_token).catch(error => { chatTitle.textContent = error.message; }));
+      chatConversations.append(button);
+    });
+    if (selectedConversationToken) document.querySelectorAll('.admin-conversation').forEach(button => button.classList.toggle('active', button.dataset.token === selectedConversationToken));
+  } catch (error) {
+    chatConversations.innerHTML = `<p class="empty-chats">${esc(error.message || 'Не удалось загрузить чаты.')}</p>`;
+  }
+}
+chatReplyForm.addEventListener('submit', async event => {
+  event.preventDefault();
+  if (!selectedConversationToken) return;
+  const textarea = chatReplyForm.elements.message;
+  const button = chatReplyForm.querySelector('button');
+  const text = textarea.value.trim();
+  if (!text) return;
+  button.disabled = true;
+  try {
+    const { message } = await adminChatRequest({ action:'send', conversationToken:selectedConversationToken, message:text });
+    renderAdminMessage(message);
+    textarea.value = '';
+    void loadChats();
+  } catch (error) { chatTitle.textContent = error.message || 'Не удалось отправить сообщение.'; }
+  finally { button.disabled = false; }
+});
+
 document.querySelector('#login-form').onsubmit = async event => {
   event.preventDefault();
   if (!client) { errorText.textContent = 'Заполните supabase-config.js'; return; }
@@ -76,6 +151,7 @@ document.querySelector('#login-form').onsubmit = async event => {
   login.hidden = true;
   panel.hidden = false;
   loadOrders();
+  loadChats();
 };
 document.querySelector('#logout').onclick = async () => { await client.auth.signOut(); panel.hidden = true; login.hidden = false; };
-if (client) client.auth.getSession().then(({ data }) => { if (data.session) { login.hidden = true; panel.hidden = false; loadOrders(); } });
+if (client) client.auth.getSession().then(({ data }) => { if (data.session) { login.hidden = true; panel.hidden = false; loadOrders(); loadChats(); } });
