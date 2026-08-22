@@ -341,8 +341,64 @@ document.querySelector('.close-cart').addEventListener('click', closeCart);
 backdrop.addEventListener('click', closeCart);
 const checkoutModal = document.querySelector('#checkout-modal');
 const checkoutStatus = document.querySelector('#checkout-status');
+const deliveryAddress = document.querySelector('#delivery-address');
+const addressSuggestions = document.querySelector('#address-suggestions');
+let addressLookupTimer;
+let latestAddressLookup = 0;
+const hideAddressSuggestions = () => {
+  addressSuggestions.replaceChildren();
+  addressSuggestions.hidden = true;
+  deliveryAddress.setAttribute('aria-expanded', 'false');
+};
+const showAddressSuggestions = suggestions => {
+  hideAddressSuggestions();
+  if (!suggestions.length) return;
+  suggestions.forEach(({ value }) => {
+    if (!value) return;
+    const option = document.createElement('button');
+    option.type = 'button';
+    option.className = 'address-suggestion';
+    option.setAttribute('role', 'option');
+    option.textContent = value;
+    option.addEventListener('mousedown', event => {
+      event.preventDefault();
+      deliveryAddress.value = value;
+      hideAddressSuggestions();
+      deliveryAddress.focus();
+    });
+    addressSuggestions.append(option);
+  });
+  if (addressSuggestions.children.length) {
+    addressSuggestions.hidden = false;
+    deliveryAddress.setAttribute('aria-expanded', 'true');
+  }
+};
+const loadAddressSuggestions = async () => {
+  const query = deliveryAddress.value.trim();
+  if (query.length < 3 || !window.supabase || !window.SUPABASE_URL || !window.SUPABASE_ANON_KEY) {
+    hideAddressSuggestions();
+    return;
+  }
+  const requestId = ++latestAddressLookup;
+  try {
+    const client = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+    const { data, error } = await client.functions.invoke('address-suggest', { body: { query } });
+    if (requestId !== latestAddressLookup || error) return;
+    showAddressSuggestions(Array.isArray(data?.suggestions) ? data.suggestions : []);
+  } catch {
+    if (requestId === latestAddressLookup) hideAddressSuggestions();
+  }
+};
+deliveryAddress.addEventListener('input', () => {
+  window.clearTimeout(addressLookupTimer);
+  addressLookupTimer = window.setTimeout(loadAddressSuggestions, 320);
+});
+deliveryAddress.addEventListener('blur', () => window.setTimeout(hideAddressSuggestions, 160));
+deliveryAddress.addEventListener('keydown', event => {
+  if (event.key === 'Escape') hideAddressSuggestions();
+});
 const openCheckout = () => { document.querySelector('#checkout-size').textContent=`${cart.length} шт.`; document.querySelector('#checkout-price').textContent=document.querySelector('#cart-total').textContent; checkoutStatus.textContent=''; checkoutModal.classList.add('open'); checkoutModal.setAttribute('aria-hidden','false'); };
-const closeCheckout = () => { checkoutModal.classList.remove('open'); checkoutModal.setAttribute('aria-hidden','true'); };
+const closeCheckout = () => { hideAddressSuggestions(); checkoutModal.classList.remove('open'); checkoutModal.setAttribute('aria-hidden','true'); };
 document.querySelector('.checkout').addEventListener('click', openCheckout);
 document.querySelector('.close-checkout').addEventListener('click', closeCheckout);
 checkoutModal.addEventListener('click', event => { if(event.target === checkoutModal) closeCheckout(); });
