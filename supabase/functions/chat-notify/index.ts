@@ -49,9 +49,9 @@ Deno.serve(async request => {
   if (normalize(body.website, 100)) return json({ sent: true }, origin);
 
   const name = normalize(body.name, 80) || 'Не указано';
-  const contact = normalize(body.contact, 160);
+  const contact = normalize(body.contact, 160) || 'Не указан';
   const message = normalize(body.message, 2000);
-  if (!contact || !message) return json({ error: 'Укажите контакт и текст сообщения.' }, origin, 400);
+  if (!message) return json({ error: 'Напишите сообщение.' }, origin, 400);
 
   const telegramToken = Deno.env.get('TELEGRAM_BOT_TOKEN');
   const telegramChatId = Deno.env.get('TELEGRAM_CHAT_ID');

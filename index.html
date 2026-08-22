@@ -112,19 +112,19 @@
       <label>Ваше имя<input name="full_name" required autocomplete="name"></label><label>Телефон<input name="phone" type="tel" required autocomplete="tel" placeholder="+7 999 000-00-00"></label><label>Email<input name="email" type="email" autocomplete="email" placeholder="name@example.com" required><small>После заказа на этот адрес придёт ссылка для установки пароля от личного кабинета.</small></label><label class="address-field">Адрес доставки<div class="address-suggest"><textarea id="delivery-address" name="address" required rows="2" autocomplete="street-address" aria-autocomplete="list" aria-controls="address-suggestions" aria-expanded="false"></textarea><div id="address-suggestions" class="address-suggestions" role="listbox" hidden></div></div><small>Начните вводить город, улицу и номер дома — выберите адрес из подсказки.</small></label><label>Комментарий к заказу<textarea name="comment" rows="2"></textarea></label><p class="checkout-status" id="checkout-status" role="status" aria-live="polite"></p><button class="button dark" type="submit">Отправить заказ</button>
     </form>
   </div>
-  <button class="chat-launch" id="chat-launch" type="button" aria-label="Написать в чат" aria-haspopup="dialog" aria-controls="chat-modal">💬</button>
+  <button class="chat-launch" id="chat-launch" type="button" aria-label="Написать в чат" aria-haspopup="dialog" aria-controls="chat-modal">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 5.5h10a3 3 0 0 1 3 3v4a3 3 0 0 1-3 3H9l-4.5 3v-10a3 3 0 0 1 0-3Z"/><path d="M16.5 9.5h1a2 2 0 0 1 2 2v5l-3.2-2.1h-2.8"/></svg>
+  </button>
   <div class="chat-modal" id="chat-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="chat-title">
     <form class="chat-card" id="chat-form">
       <button class="close-chat" type="button" aria-label="Закрыть чат">×</button>
-      <p class="chat-kicker">CANVASO · поддержка</p>
-      <h2 id="chat-title">Написать в чат</h2>
-      <p class="chat-description">Сообщение сразу поступит менеджеру. Оставьте контакт для ответа.</p>
-      <label>Ваше имя<input name="name" maxlength="80" autocomplete="name" placeholder="Как к вам обращаться"></label>
-      <label>Телефон или email<input name="contact" maxlength="160" required autocomplete="email tel" placeholder="Чтобы мы могли ответить"></label>
-      <label>Сообщение<textarea name="message" maxlength="2000" required rows="5" placeholder="Напишите ваш вопрос"></textarea></label>
+      <header class="chat-header"><span class="chat-avatar">♧<i></i></span><div><strong id="chat-title">Оператор</strong><small>Онлайн</small></div></header>
+      <div class="chat-transcript"><p>Здравствуйте! Напишите ваш вопрос — сообщение сразу поступит менеджеру.</p></div>
+      <details class="chat-contact"><summary>Оставить контакт для ответа</summary><label>Ваше имя<input name="name" maxlength="80" autocomplete="name" placeholder="Как к вам обращаться"></label><label>Телефон или email<input name="contact" maxlength="160" autocomplete="email tel" placeholder="Необязательно"></label></details>
+      <label class="chat-message"><textarea name="message" maxlength="2000" required rows="2" placeholder="Отправить сообщение…"></textarea></label>
       <input class="chat-honeypot" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
       <p class="chat-status" id="chat-status" role="status" aria-live="polite"></p>
-      <button class="button dark" type="submit">Отправить сообщение</button>
+      <button class="chat-send" type="submit" aria-label="Отправить сообщение">➤</button>
     </form>
   </div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

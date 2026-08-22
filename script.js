@@ -488,7 +488,7 @@ const openChat = () => {
   chatStatus.classList.remove('success');
   chatModal.classList.add('open');
   chatModal.setAttribute('aria-hidden', 'false');
-  window.setTimeout(() => chatForm.elements.contact.focus(), 50);
+  window.setTimeout(() => chatForm.elements.message.focus(), 50);
 };
 const closeChat = () => {
   chatModal.classList.remove('open');
