@@ -477,6 +477,60 @@ document.querySelector('#checkout-form').addEventListener('submit', async event 
 });
 document.querySelector('.menu-toggle').addEventListener('click', () => { const nav=document.querySelector('.site-header nav'); nav.classList.toggle('open'); });
 
+// Support messages are delivered by an Edge Function: the Telegram bot token
+// is never present in the browser or in the public site files.
+const chatLaunch = document.querySelector('#chat-launch');
+const chatModal = document.querySelector('#chat-modal');
+const chatForm = document.querySelector('#chat-form');
+const chatStatus = document.querySelector('#chat-status');
+const openChat = () => {
+  chatStatus.textContent = '';
+  chatStatus.classList.remove('success');
+  chatModal.classList.add('open');
+  chatModal.setAttribute('aria-hidden', 'false');
+  window.setTimeout(() => chatForm.elements.contact.focus(), 50);
+};
+const closeChat = () => {
+  chatModal.classList.remove('open');
+  chatModal.setAttribute('aria-hidden', 'true');
+  chatLaunch.focus();
+};
+chatLaunch.addEventListener('click', openChat);
+chatModal.querySelector('.close-chat').addEventListener('click', closeChat);
+chatModal.addEventListener('click', event => { if (event.target === chatModal) closeChat(); });
+chatForm.addEventListener('submit', async event => {
+  event.preventDefault();
+  if (!window.supabase || !window.SUPABASE_URL || !window.SUPABASE_ANON_KEY) {
+    chatStatus.textContent = 'Чат временно недоступен. Попробуйте позже.';
+    return;
+  }
+  const submit = chatForm.querySelector('[type="submit"]');
+  const form = new FormData(chatForm);
+  submit.disabled = true;
+  chatStatus.classList.remove('success');
+  chatStatus.textContent = 'Отправляем сообщение…';
+  try {
+    const client = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+    const { data, error } = await client.functions.invoke('chat-notify', {
+      body: {
+        name: String(form.get('name') || ''),
+        contact: String(form.get('contact') || ''),
+        message: String(form.get('message') || ''),
+        website: String(form.get('website') || ''),
+      },
+    });
+    if (error || !data?.sent) throw new Error(data?.error || error?.message || 'Не удалось отправить сообщение.');
+    chatStatus.textContent = 'Сообщение отправлено. Скоро вам ответим.';
+    chatStatus.classList.add('success');
+    chatForm.reset();
+    window.setTimeout(closeChat, 1800);
+  } catch (error) {
+    chatStatus.textContent = error instanceof Error ? error.message : 'Не удалось отправить сообщение. Попробуйте позже.';
+  } finally {
+    submit.disabled = false;
+  }
+});
+
 // Keep the catalogue section easy to reach without leaving `#catalog` in
 // the public URL. Old shared links with that hash still scroll correctly.
 const catalogSection = document.querySelector('#catalog');
