@@ -488,8 +488,9 @@ const chatStorageKey = 'canvaso-chat-conversation';
 let chatClient;
 let chatChannel;
 let chatLoaded = false;
+const storedConversationToken = () => localStorage.getItem(chatStorageKey);
 const conversationToken = () => {
-  let token = localStorage.getItem(chatStorageKey);
+  let token = storedConversationToken();
   if (!token) { token = crypto.randomUUID(); localStorage.setItem(chatStorageKey, token); }
   return token;
 };
@@ -508,7 +509,15 @@ const openChatConnection = async () => {
   const token = conversationToken();
   if (!chatChannel) {
     chatChannel = chatClient.channel(`canvaso:chat:${token}`)
-      .on('broadcast', { event: 'message' }, payload => renderChatMessage(payload.payload))
+      .on('broadcast', { event: 'message' }, payload => {
+        const message = payload.payload;
+        renderChatMessage(message);
+        if (message?.sender === 'admin') {
+          showChat(false);
+          chatStatus.textContent = 'Новое сообщение от оператора.';
+          chatStatus.classList.add('success');
+        }
+      })
       .subscribe();
   }
   if (!chatLoaded) {
@@ -521,14 +530,15 @@ const openChatConnection = async () => {
     }
   }
 };
-const openChat = () => {
+const showChat = (focusInput = false) => {
   chatStatus.textContent = '';
   chatStatus.classList.remove('success');
   chatModal.classList.add('open');
   chatModal.setAttribute('aria-hidden', 'false');
   void openChatConnection();
-  window.setTimeout(() => chatForm.elements.message.focus(), 50);
+  if (focusInput) window.setTimeout(() => chatForm.elements.message.focus(), 50);
 };
+const openChat = () => showChat(true);
 const closeChat = () => {
   chatModal.classList.remove('open');
   chatModal.setAttribute('aria-hidden', 'true');
@@ -537,6 +547,7 @@ const closeChat = () => {
 chatLaunch.addEventListener('click', openChat);
 chatModal.querySelector('.close-chat').addEventListener('click', closeChat);
 chatModal.addEventListener('click', event => { if (event.target === chatModal) closeChat(); });
+if (storedConversationToken()) void openChatConnection();
 chatForm.addEventListener('submit', async event => {
   event.preventDefault();
   if (!window.supabase || !window.SUPABASE_URL || !window.SUPABASE_ANON_KEY) {
