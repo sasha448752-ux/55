@@ -54,7 +54,7 @@ Deno.serve(async request => {
   const telegramToken = Deno.env.get('TELEGRAM_BOT_TOKEN'); const telegramChatId = Deno.env.get('TELEGRAM_CHAT_ID');
   if (telegramToken && telegramChatId) {
     const sentAt = new Intl.DateTimeFormat('ru-RU', { timeZone: 'Europe/Moscow', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).format(new Date());
-    const telegramText = ['💬 Новое сообщение CANVASO', `Время: ${sentAt} (МСК)`, `Имя: ${name || 'Не указано'}`, `Контакт: ${contact || 'Не указан'}`, '', text].join('\n');
+    const telegramText = ['💬 Новое сообщение в чате CANVASO', `Время: ${sentAt} (МСК)`, '', 'Откройте раздел «Чаты с клиентами» в админке, чтобы прочитать и ответить.'].join('\n');
     const telegram = await fetch(`https://api.telegram.org/bot${telegramToken}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: telegramChatId, text: telegramText, disable_web_page_preview: true }) });
     if (!telegram.ok) console.error('Telegram chat notification failed:', telegram.status);
   }
