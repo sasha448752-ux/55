@@ -31,8 +31,10 @@ Deno.serve(async request => {
   const admin = createClient(url, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } });
   let body: Record<string, unknown>; try { body = await request.json(); } catch { return json({ error: 'Некорректный запрос.' }, origin, 400); }
   if (normalize(body.website, 100)) return json({ sent: true }, origin);
-  const visitorToken = normalize(body.conversationToken, 50);
-  if (!uuidPattern.test(visitorToken)) return json({ error: 'Не удалось открыть диалог. Обновите страницу.' }, origin, 400);
+  const suppliedToken = normalize(body.conversationToken, 50);
+  // Keep the previous one-message chat form working until the new real-time
+  // widget is published. The new widget stores this token in localStorage.
+  const visitorToken = uuidPattern.test(suppliedToken) ? suppliedToken : crypto.randomUUID();
   if (body.action === 'history') {
     const { data: conversation } = await admin.from('chat_conversations').select('id').eq('visitor_token', visitorToken).maybeSingle();
     if (!conversation) return json({ messages: [] }, origin);
