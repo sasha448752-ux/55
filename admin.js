@@ -10,6 +10,11 @@ const cropValue = value => {
   return Number.isFinite(number) ? Math.round(Math.max(0, Math.min(100, number))) : 50;
 };
 const effectNames = { none:'Без эффекта', black_white:'Ч/Б', warm:'Тёплый свет', vintage:'Винтаж', contrast:'Контраст' };
+const deleteCompletedOrder = async orderId => {
+  const { data, error } = await client.functions.invoke('admin-order', { body: { action:'delete', orderId } });
+  if (error || data?.error) throw new Error(data?.error || error.message || 'Не удалось удалить заказ.');
+  return data;
+};
 
 const sendStatusNotification = async (orderId, message) => {
   const { data, error } = await client.functions.invoke('order-status-notify', { body: { orderId } });
@@ -44,10 +49,12 @@ async function loadOrders() {
     const photoEffect = effectNames[order.photo_effect] || effectNames.none;
     const element = document.createElement('article');
     element.className = 'order';
-    element.innerHTML = `<img src="${photo?.signedUrl || ''}" alt="Фотография к заказу" style="object-position:${cropX}% ${cropY}%"><div><h2>Заказ #${esc(order.id.slice(0, 8))} · ${esc(order.canvas_size)}</h2><p><b>${esc(order.full_name)}</b> · ${esc(order.phone)} · ${esc(order.email || '—')}</p><p>${esc(order.address)}</p><p>${esc(order.comment || 'Без комментария')} · ${(order.price_kop / 100).toLocaleString('ru-RU')} ₽</p><p>Кадрирование: ${cropX}% по горизонтали, ${cropY}% по вертикали</p><p>Эффект: ${esc(photoEffect)}</p></div><div class="order-status"><select aria-label="Статус заказа"><option value="new">Новый</option><option value="in_progress">В работе</option><option value="shipped">Отправлен</option><option value="done">Готов</option><option value="cancelled">Отменён</option></select><p class="notification-message" role="status"></p></div>`;
+    element.innerHTML = `<img src="${photo?.signedUrl || ''}" alt="Фотография к заказу" style="object-position:${cropX}% ${cropY}%"><div><h2>Заказ #${esc(order.id.slice(0, 8))} · ${esc(order.canvas_size)}</h2><p><b>${esc(order.full_name)}</b> · ${esc(order.phone)} · ${esc(order.email || '—')}</p><p>${esc(order.address)}</p><p>${esc(order.comment || 'Без комментария')} · ${(order.price_kop / 100).toLocaleString('ru-RU')} ₽</p><p>Кадрирование: ${cropX}% по горизонтали, ${cropY}% по вертикали</p><p>Эффект: ${esc(photoEffect)}</p></div><div class="order-status"><select aria-label="Статус заказа"><option value="new">Новый</option><option value="in_progress">В работе</option><option value="shipped">Отправлен</option><option value="done">Готов</option><option value="cancelled">Отменён</option></select><button class="order-delete" type="button" hidden>Удалить заказ</button><p class="notification-message" role="status"></p></div>`;
     const select = element.querySelector('select');
+    const deleteButton = element.querySelector('.order-delete');
     const message = element.querySelector('.notification-message');
     select.value = order.status;
+    deleteButton.hidden = order.status !== 'done';
     select.addEventListener('change', async () => {
       select.disabled = true;
       message.textContent = 'Сохраняем статус…';
@@ -60,8 +67,23 @@ async function loadOrders() {
         return;
       }
       order.status = select.value;
+      deleteButton.hidden = order.status !== 'done';
       await sendStatusNotification(order.id, message);
       select.disabled = false;
+    });
+    deleteButton.addEventListener('click', async () => {
+      if (!window.confirm(`Удалить завершённый заказ #${order.id.slice(0, 8)}? Восстановить его и фотографию будет нельзя.`)) return;
+      deleteButton.disabled = true;
+      message.textContent = 'Удаляем заказ…';
+      message.classList.remove('success');
+      try {
+        await deleteCompletedOrder(order.id);
+        element.remove();
+        if (!list.children.length) list.textContent = 'Заказов пока нет.';
+      } catch (error) {
+        message.textContent = error instanceof Error ? error.message : 'Не удалось удалить заказ.';
+        deleteButton.disabled = false;
+      }
     });
     list.append(element);
   }
