@@ -25,7 +25,7 @@ const getServiceRoleKey = () => {
   return secretKeys ? JSON.parse(secretKeys).default : undefined;
 };
 
-const businessDaysToShip = 3;
+const calendarDaysToShip = 3;
 const formatMoscowDate = (value: Date) => new Intl.DateTimeFormat('ru-RU', {
   timeZone: 'Europe/Moscow',
   day: '2-digit',
@@ -35,12 +35,7 @@ const formatMoscowDate = (value: Date) => new Intl.DateTimeFormat('ru-RU', {
 const shippingDeadline = (createdAt: string) => {
   const deadline = new Date(createdAt);
   deadline.setUTCHours(12, 0, 0, 0);
-  let addedDays = 0;
-  while (addedDays < businessDaysToShip) {
-    deadline.setUTCDate(deadline.getUTCDate() + 1);
-    const day = deadline.getUTCDay();
-    if (day !== 0 && day !== 6) addedDays += 1;
-  }
+  deadline.setUTCDate(deadline.getUTCDate() + calendarDaysToShip);
   return deadline;
 };
 
@@ -92,7 +87,7 @@ Deno.serve(async request => {
     '🆕 <b>Новый заказ на холст</b>',
     `<b>Заказ:</b> #${escapeHtml(order.id.slice(0, 8))}`,
     `<b>Оформлен:</b> ${formatMoscowDate(orderedAt)}`,
-    `<b>Передать в доставку до:</b> ${formatMoscowDate(deadline)} (3 рабочих дня)`,
+    `<b>Передать в доставку до:</b> ${formatMoscowDate(deadline)} (3 календарных дня)`,
     `<b>Размер:</b> ${escapeHtml(order.canvas_size)}`,
     `<b>Кадрирование:</b> ${cropX}% по горизонтали, ${cropY}% по вертикали`,
     `<b>Эффект:</b> ${effectNames[String(order.photo_effect)] || 'Без эффекта'}`,
