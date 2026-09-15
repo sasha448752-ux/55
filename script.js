@@ -286,7 +286,24 @@ const cartCount = document.querySelector('.cart-icon b');
 const openCart = () => { drawer.classList.add('open'); backdrop.classList.add('open'); drawer.setAttribute('aria-hidden','false'); };
 const closeCart = () => { drawer.classList.remove('open'); backdrop.classList.remove('open'); drawer.setAttribute('aria-hidden','true'); };
 const cart = [];
+// Retain IDs and confirmed uploads for retries in this page session.
+const checkoutAttempts = new WeakMap();
+let checkoutSubmitting = false;
 const cartPhotoUrls = new Set();
+const cartStorageWarning = document.createElement('p');
+cartStorageWarning.setAttribute('role', 'status');
+cartStorageWarning.hidden = true;
+cartItems.before(cartStorageWarning);
+const warnCartStorage = () => {
+  cartStorageWarning.textContent = 'Браузер не смог сохранить корзину. Не обновляйте страницу: фотографии могут потеряться. Проверьте свободное место и разрешения браузера.';
+  cartStorageWarning.hidden = false;
+};
+const persistCart = async () => {
+  try {
+    await window.CanvasCartStore.save(cart);
+    cartStorageWarning.hidden = true;
+  } catch { warnCartStorage(); }
+};
 const priceNumber = value => Number(value.replace(/\D/g, '')) || 0;
 const formatPrice = value => `${value.toLocaleString('ru-RU')} ₽`;
 const renderCart = () => {
@@ -309,12 +326,14 @@ const renderCart = () => {
     remove.className = 'remove-cart';
     remove.textContent = 'Удалить';
     remove.addEventListener('click', () => {
+      if (checkoutSubmitting) return;
       const [removed] = cart.splice(index, 1);
       if (!cart.some(cartItem => cartItem.image === removed.image) && removed.image !== activePhotoUrl) {
         URL.revokeObjectURL(removed.image);
         cartPhotoUrls.delete(removed.image);
       }
       renderCart();
+      void persistCart();
     });
     const itemPrice = document.createElement('strong');
     itemPrice.textContent = item.priceText;
@@ -328,14 +347,29 @@ const renderCart = () => {
   document.querySelector('#cart-total').textContent = formatPrice(total);
   cartCount.textContent = String(cart.length);
 };
-const addToCart = () => {
+const cartReady = (async () => {
+  try {
+    const saved = await window.CanvasCartStore.load();
+    for (const item of saved) {
+      if (!(item.file instanceof Blob) || !item.file.size || !prices[item.size]) continue;
+      const image = URL.createObjectURL(item.file);
+      cartPhotoUrls.add(image);
+      cart.push({ ...item, image, priceText: prices[item.size], price: priceNumber(prices[item.size]) });
+    }
+    renderCart();
+  } catch { warnCartStorage(); }
+})();
+const addToCart = async () => {
+  await cartReady;
+  if (checkoutSubmitting) return;
   const file = input.files[0];
   if (!file) return;
   cartPhotoUrls.add(preview.src);
   cart.push({ image: preview.src, file, size: sizeLabel.textContent, priceText: price.textContent, price: priceNumber(price.textContent), crop: { ...cropPosition }, photoEffect: activePhotoEffect });
   renderCart();
+  await persistCart();
 };
-document.querySelector('.add-to-cart').addEventListener('click', () => { addToCart(); const toast=document.querySelector('#toast'); toast.classList.add('visible'); setTimeout(() => toast.classList.remove('visible'), 2600); openCart(); });
+document.querySelector('.add-to-cart').addEventListener('click', async () => { await addToCart(); const toast=document.querySelector('#toast'); toast.classList.add('visible'); setTimeout(() => toast.classList.remove('visible'), 2600); openCart(); });
 document.querySelector('.cart-icon').addEventListener('click', openCart);
 document.querySelector('.close-cart').addEventListener('click', closeCart);
 backdrop.addEventListener('click', closeCart);
@@ -404,28 +438,38 @@ document.querySelector('.close-checkout').addEventListener('click', closeCheckou
 checkoutModal.addEventListener('click', event => { if(event.target === checkoutModal) closeCheckout(); });
 document.querySelector('#checkout-form').addEventListener('submit', async event => {
   event.preventDefault();
+  if (checkoutSubmitting) return;
+  const checkoutForm = event.currentTarget;
   const configured = window.SUPABASE_URL && !window.SUPABASE_URL.startsWith('YOUR_') && window.SUPABASE_ANON_KEY && !window.SUPABASE_ANON_KEY.startsWith('YOUR_');
   if(!configured){ checkoutStatus.textContent='Приём заказов ещё не настроен. Обратитесь к менеджеру.'; return; }
   if(!cart.length){ checkoutStatus.textContent='Добавьте хотя бы один холст в корзину.'; return; }
   if(cart.some(item => !item.file)){ checkoutStatus.textContent='Загрузите фотографию для каждого холста.'; return; }
-  const submit = event.currentTarget.querySelector('[type="submit"]'); submit.disabled=true; checkoutStatus.textContent='Отправляем заказ…';
+  const checkoutItems = cart.slice();
+  const form = new FormData(checkoutForm);
+  const submit = checkoutForm.querySelector('[type="submit"]');
+  checkoutSubmitting = true;
+  submit.disabled=true;
+  checkoutStatus.classList.remove('success');
+  checkoutStatus.textContent='Отправляем заказ…';
+  try {
   if (!window.supabase) { checkoutStatus.textContent='Сервис заказов временно недоступен. Попробуйте позже.'; submit.disabled=false; return; }
   const supabaseClient = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
   // getSession reads the already stored session and does not pause checkout for
   // a separate Auth network request. Database RLS still validates ownership.
   const {data:{session}} = await supabaseClient.auth.getSession();
   const user = session?.user || null;
-  const form = new FormData(event.currentTarget);
   const customerEmail = String(form.get('email') || user?.email || '').trim().toLowerCase();
   if (!customerEmail) { checkoutStatus.textContent='Укажите email для подтверждения заказа и создания личного кабинета.'; submit.disabled=false; return; }
   const guestOrderClaims = [];
   const telegramOrderIds = [];
-  for (const item of cart) {
-    const orderId = crypto.randomUUID();
-    const accountClaimToken = user ? null : crypto.randomUUID();
+  const ordersToInsert = [];
+  // Prepare the entire batch before creating any remote orders. A bad second
+  // image must not leave the first image ordered without a completion message.
+  const preparedItems = [];
+  for (const item of checkoutItems) {
     let printFile;
     try {
-      checkoutStatus.textContent = 'Готовим выбранную область холста…';
+      checkoutStatus.textContent = `Готовим фото ${preparedItems.length + 1} из ${checkoutItems.length}…`;
       printFile = await createPrintFile(item.file, item.photoEffect || 'none', item.size, item.crop);
     } catch (printError) {
       checkoutStatus.textContent = printError instanceof Error ? printError.message : 'Не удалось подготовить фотографию.';
@@ -437,16 +481,43 @@ document.querySelector('#checkout-form').addEventListener('submit', async event 
       submit.disabled = false;
       return;
     }
+    preparedItems.push({ item, printFile });
+  }
+  for (const [index, prepared] of preparedItems.entries()) {
+    const { item, printFile } = prepared;
+    let attempt = checkoutAttempts.get(item);
+    if (!attempt) {
+      attempt = { orderId: createConversationToken(), accountClaimToken: user ? null : createConversationToken(), uploaded: false };
+      checkoutAttempts.set(item, attempt);
+    }
+    const { orderId, accountClaimToken } = attempt;
+    checkoutStatus.textContent = `Отправляем фото ${index + 1} из ${preparedItems.length}…`;
     const safeName = printFile.name.toLowerCase().replace(/[^a-z0-9._-]/g,'-');
     const photoPath = `${orderId}/${safeName}`;
-    const {error:uploadError} = await supabaseClient.storage.from('order-photos').upload(photoPath,printFile,{contentType:printFile.type,upsert:false});
-    if(uploadError){ checkoutStatus.textContent=uploadError.message; submit.disabled=false; return; }
+    if (!attempt.uploaded) {
+      const {error:uploadError} = await supabaseClient.storage.from('order-photos').upload(photoPath,printFile,{contentType:printFile.type,upsert:false});
+      if(uploadError){ checkoutStatus.textContent='Не удалось подтвердить загрузку фото. Попробуйте ещё раз; если ошибка повторится, обратитесь к менеджеру.'; return; }
+      attempt.uploaded = true;
+    }
     const order = {id:orderId,customer_id:user?.id||null,full_name:form.get('full_name'),phone:form.get('phone'),email:customerEmail,address:form.get('address'),comment:form.get('comment')||null,canvas_size:item.size,price_kop:item.price*100,photo_path:photoPath,crop_position:item.crop||{x:50,y:50},photo_effect:item.photoEffect||'none',account_claim_token:accountClaimToken};
-    const {error:orderError} = await supabaseClient.from('orders').insert(order);
-    if(orderError){ checkoutStatus.textContent=orderError.message; submit.disabled=false; return; }
+    ordersToInsert.push(order);
     if (accountClaimToken) guestOrderClaims.push({ orderId, claimToken: accountClaimToken });
     telegramOrderIds.push(orderId);
   }
+    // A single INSERT is atomic: a failure cannot leave half the cart ordered.
+    checkoutStatus.textContent = 'Подтверждаем заказ…';
+    const {error:orderError} = await supabaseClient.from('orders').insert(ordersToInsert);
+    if(orderError){
+      const messages = {
+        CANVAS_PRICE_CHANGED: 'Цена изменилась. Обновите страницу и проверьте стоимость перед оформлением.',
+        CANVAS_SIZE_UNAVAILABLE: 'Этот размер сейчас недоступен. Выберите другой размер холста.',
+      };
+      checkoutStatus.textContent = orderError.code === '23505'
+        ? 'Этот заказ, возможно, уже принят. Уточните статус у менеджера; повторный заказ не создан.'
+        : messages[orderError.message] || 'Не удалось подтвердить заказ. Уточните статус у менеджера перед повторной отправкой.';
+      submit.disabled=false;
+      return;
+    }
   // The order is safely stored. Telegram and email must not make the customer
   // wait for a large photo to be downloaded and delivered.
   void Promise.all(telegramOrderIds.map(async orderId => {
@@ -473,7 +544,13 @@ document.querySelector('#checkout-form').addEventListener('submit', async event 
       }
     })();
   }
-  checkoutStatus.textContent=`Заказ принят! Мы свяжемся с вами для подтверждения.${accountMessage}`; checkoutStatus.classList.add('success'); cart.length=0; renderCart(); event.currentTarget.reset(); setTimeout(()=>{closeCheckout();closeCart();},4200);
+  checkoutStatus.textContent=`Заказ принят! Мы свяжемся с вами для подтверждения.${accountMessage}`; checkoutStatus.classList.add('success'); cart.length=0; renderCart(); await persistCart(); checkoutForm.reset(); setTimeout(()=>{closeCheckout();closeCart();},4200);
+  } catch (error) {
+    checkoutStatus.textContent='Не удалось завершить отправку. Если вы уже отправляли заказ, уточните его статус у менеджера перед повторной попыткой.';
+  } finally {
+    checkoutSubmitting = false;
+    submit.disabled = false;
+  }
 });
 document.querySelector('.menu-toggle').addEventListener('click', () => { const nav=document.querySelector('.site-header nav'); nav.classList.toggle('open'); });
 

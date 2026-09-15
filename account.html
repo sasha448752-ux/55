@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Личный кабинет — CANVASO</title>
+  <meta name="robots" content="noindex,nofollow">
   <link rel="stylesheet" href="account.css">
 </head>
 <body>
@@ -19,6 +20,7 @@
         <p class="form-message" id="auth-message" role="status"></p>
         <button type="submit" id="login-button">Войти</button>
         <button class="secondary" type="button" id="register-button">Создать аккаунт</button>
+        <button class="secondary" type="button" id="recover-button">Забыли пароль?</button>
       </form>
     </section>
 
@@ -28,6 +30,17 @@
         <button class="secondary" type="button" id="logout-button">Выйти</button>
       </header>
       <div class="orders" id="customer-orders" aria-live="polite"></div>
+      <details class="profile-card"><summary>Мой профиль</summary>
+        <form id="profile-form">
+          <label>Имя<input name="full_name" autocomplete="name" maxlength="120" required></label>
+          <label>Телефон<input name="phone" type="tel" autocomplete="tel" maxlength="30"></label>
+          <label>Email<input name="email" type="email" autocomplete="email" required></label>
+          <p>Изменение email необходимо подтвердить по ссылке из письма.</p>
+          <button type="submit">Сохранить профиль</button>
+          <button type="button" class="secondary" id="change-password">Получить ссылку для смены пароля</button>
+          <p id="profile-message" role="status"></p>
+        </form>
+      </details>
     </section>
   </main>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

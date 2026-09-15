@@ -8,6 +8,30 @@ const bulkOrderActions = document.querySelector('#bulk-order-actions');
 const selectedOrderCount = document.querySelector('#selected-order-count');
 const deleteSelectedOrdersButton = document.querySelector('#delete-selected-orders');
 const selectedOrderIds = new Set();
+const filterStyles = document.createElement('link');
+filterStyles.rel = 'stylesheet'; filterStyles.href = 'admin-filters.css';
+document.head.append(filterStyles);
+const indexing = document.createElement('meta');
+indexing.name = 'robots'; indexing.content = 'noindex,nofollow';
+document.head.append(indexing);
+const filters = document.createElement('section');
+filters.className = 'order-filters';
+filters.innerHTML = `<label>Поиск заказа<input id="order-search" type="search" placeholder="Номер, имя, телефон или email"></label><label>Статус<select id="order-status-filter"><option value="">Все статусы</option><option value="new">Новый</option><option value="in_progress">В работе</option><option value="shipped">Отправлен</option><option value="done">Готов</option><option value="cancelled">Отменён</option></select></label><label>С даты<input id="order-date-from" type="date"></label><label>По дату<input id="order-date-to" type="date"></label><p id="order-summary" role="status"></p>`;
+list.before(filters);
+function filterOrders() {
+  const query = document.querySelector('#order-search').value.trim().toLocaleLowerCase('ru');
+  const status = document.querySelector('#order-status-filter').value;
+  const from = document.querySelector('#order-date-from').value;
+  const to = document.querySelector('#order-date-to').value;
+  let count = 0, total = 0;
+  list.querySelectorAll('article.order').forEach(element => {
+    const date = element.dataset.date;
+    element.hidden = !(element.dataset.search.includes(query) && (!status || element.dataset.status === status) && (!from || date >= from) && (!to || date <= to));
+    if (!element.hidden) { count++; total += Number(element.dataset.price); }
+  });
+  document.querySelector('#order-summary').textContent = `Показано: ${count}. Сумма заказов: ${(total / 100).toLocaleString('ru-RU')} ₽ (не показатель оплаченной выручки).`;
+}
+filters.addEventListener('input', filterOrders);
 const esc = value => String(value || '').replace(/[&<>"']/g, character => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[character]));
 const cropValue = value => {
   const number = Number(value);
@@ -61,6 +85,11 @@ async function loadOrders() {
     const photoEffect = effectNames[order.photo_effect] || effectNames.none;
     const element = document.createElement('article');
     element.className = 'order';
+    element.dataset.search = [order.id, order.full_name, order.phone, order.email].join(' ').toLocaleLowerCase('ru');
+    element.dataset.status = order.status;
+    const created = new Date(order.created_at);
+    element.dataset.date = `${created.getFullYear()}-${String(created.getMonth()+1).padStart(2,'0')}-${String(created.getDate()).padStart(2,'0')}`;
+    element.dataset.price = order.price_kop;
     element.innerHTML = `<img src="${photo?.signedUrl || ''}" alt="Фотография к заказу" style="object-position:${cropX}% ${cropY}%"><div><h2>Заказ #${esc(order.id.slice(0, 8))} · ${esc(order.canvas_size)}</h2><p><b>${esc(order.full_name)}</b> · ${esc(order.phone)} · ${esc(order.email || '—')}</p><p>${esc(order.address)}</p><p>${esc(order.comment || 'Без комментария')} · ${(order.price_kop / 100).toLocaleString('ru-RU')} ₽</p><p>Кадрирование: ${cropX}% по горизонтали, ${cropY}% по вертикали</p><p>Эффект: ${esc(photoEffect)}</p></div><div class="order-status"><select aria-label="Статус заказа"><option value="new">Новый</option><option value="in_progress">В работе</option><option value="shipped">Отправлен</option><option value="done">Готов</option><option value="cancelled">Отменён</option></select><label class="order-select" hidden><input type="checkbox"> Выбрать</label><button class="order-delete" type="button" hidden>Удалить заказ</button><p class="notification-message" role="status"></p></div>`;
     const select = element.querySelector('select');
     const orderSelect = element.querySelector('.order-select');
@@ -87,6 +116,8 @@ async function loadOrders() {
         return;
       }
       order.status = select.value;
+      element.dataset.status = order.status;
+      filterOrders();
       orderSelect.hidden = order.status !== 'done';
       deleteButton.hidden = order.status !== 'done';
       if (order.status !== 'done') { selectCheckbox.checked = false; selectedOrderIds.delete(order.id); updateBulkOrderActions(); }
@@ -110,6 +141,7 @@ async function loadOrders() {
       }
     });
     list.append(element);
+    filterOrders();
   }
 }
 
