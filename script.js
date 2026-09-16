@@ -100,6 +100,7 @@ const showSizesForOrientation = (orientation, preferredValue) => {
 };
 let activePhotoUrl = null;
 let activeImageSize = null;
+let readyPhotoFile = null;
 let cropPosition = { x: 50, y: 50 };
 let cropDrag = null;
 const cropControls = document.querySelector('#crop-controls');
@@ -211,6 +212,7 @@ const showAvailableSizes = (imageWidth, imageHeight) => {
   showSizesForOrientation(formatFor(recommendedWidth, recommendedHeight), recommended.value);
 };
 const loadPhoto = file => {
+  readyPhotoFile = null;
   if (!file) return;
   if (!['image/jpeg','image/png','image/webp'].includes(file.type)) { alert('Поддерживаются JPG, PNG и WEBP.'); return; }
   if (file.size > 10 * 1024 * 1024) { alert('Размер фотографии не должен превышать 10 МБ.'); return; }
@@ -221,10 +223,19 @@ const loadPhoto = file => {
   preview.src = photoUrl;
   const image = new Image();
   image.onload = () => {
+    if (activePhotoUrl !== photoUrl || input.files[0] !== file) return;
     activeImageSize = { width: image.naturalWidth, height: image.naturalHeight };
     canvas.classList.add('crop-enabled');
     cropControls.hidden = false;
     showAvailableSizes(image.naturalWidth, image.naturalHeight);
+    readyPhotoFile = file;
+  };
+  image.onerror = () => {
+    if (activePhotoUrl !== photoUrl) return;
+    readyPhotoFile = null;
+    size.disabled = true;
+    price.textContent = '—';
+    sizeHint.textContent = 'Не удалось прочитать фотографию. Выберите другой файл JPG, PNG или WEBP.';
   };
   image.src = photoUrl;
 };
@@ -361,15 +372,21 @@ const cartReady = (async () => {
 })();
 const addToCart = async () => {
   await cartReady;
-  if (checkoutSubmitting) return;
+  if (checkoutSubmitting) return false;
   const file = input.files[0];
-  if (!file) return;
+  if (!file) { alert('Сначала загрузите фотографию.'); return false; }
+  if (readyPhotoFile !== file) { alert('Фотография ещё не готова. Дождитесь загрузки или выберите другой файл.'); return false; }
+  if (size.disabled || !availablePhotoSizes.includes(sizeLabel.textContent) || priceNumber(price.textContent) <= 0) {
+    alert('Для этого фото нет подходящего размера печати. Загрузите фотографию большего разрешения.');
+    return false;
+  }
   cartPhotoUrls.add(preview.src);
   cart.push({ image: preview.src, file, size: sizeLabel.textContent, priceText: price.textContent, price: priceNumber(price.textContent), crop: { ...cropPosition }, photoEffect: activePhotoEffect });
   renderCart();
   await persistCart();
+  return true;
 };
-document.querySelector('.add-to-cart').addEventListener('click', async () => { await addToCart(); const toast=document.querySelector('#toast'); toast.classList.add('visible'); setTimeout(() => toast.classList.remove('visible'), 2600); openCart(); });
+document.querySelector('.add-to-cart').addEventListener('click', async () => { if (!await addToCart()) return; const toast=document.querySelector('#toast'); toast.classList.add('visible'); setTimeout(() => toast.classList.remove('visible'), 2600); openCart(); });
 document.querySelector('.cart-icon').addEventListener('click', openCart);
 document.querySelector('.close-cart').addEventListener('click', closeCart);
 backdrop.addEventListener('click', closeCart);
