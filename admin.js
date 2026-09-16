@@ -27,9 +27,15 @@ function filterOrders() {
   list.querySelectorAll('article.order').forEach(element => {
     const date = element.dataset.date;
     element.hidden = !(element.dataset.search.includes(query) && (!status || element.dataset.status === status) && (!from || date >= from) && (!to || date <= to));
+    if (element.hidden || element.dataset.status !== 'done') {
+      selectedOrderIds.delete(element.dataset.orderId);
+      const checkbox = element.querySelector('.order-select input');
+      if (checkbox) checkbox.checked = false;
+    }
     if (!element.hidden) { count++; total += Number(element.dataset.price); }
   });
   document.querySelector('#order-summary').textContent = `Показано: ${count}. Сумма заказов: ${(total / 100).toLocaleString('ru-RU')} ₽ (не показатель оплаченной выручки).`;
+  updateBulkOrderActions();
 }
 filters.addEventListener('input', filterOrders);
 const esc = value => String(value || '').replace(/[&<>"']/g, character => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[character]));
@@ -85,6 +91,7 @@ async function loadOrders() {
     const photoEffect = effectNames[order.photo_effect] || effectNames.none;
     const element = document.createElement('article');
     element.className = 'order';
+    element.dataset.orderId = order.id;
     element.dataset.search = [order.id, order.full_name, order.phone, order.email].join(' ').toLocaleLowerCase('ru');
     element.dataset.status = order.status;
     const created = new Date(order.created_at);
@@ -134,6 +141,7 @@ async function loadOrders() {
         selectedOrderIds.delete(order.id);
         updateBulkOrderActions();
         element.remove();
+        filterOrders();
         if (!list.children.length) list.textContent = 'Заказов пока нет.';
       } catch (error) {
         message.textContent = error instanceof Error ? error.message : 'Не удалось удалить заказ.';
@@ -146,6 +154,7 @@ async function loadOrders() {
 }
 
 deleteSelectedOrdersButton.addEventListener('click', async () => {
+  filterOrders();
   const orderIds = [...selectedOrderIds];
   if (!orderIds.length) return;
   if (!window.confirm(`Удалить ${orderIds.length} завершённых заказ(а/ов) вместе с фотографиями? Восстановить их будет нельзя.`)) return;
