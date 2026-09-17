@@ -112,25 +112,33 @@ async function loadOrders() {
       updateBulkOrderActions();
     });
     select.addEventListener('change', async () => {
+      if (select.disabled) return;
+      const requestedStatus = select.value;
       select.disabled = true;
       message.textContent = 'Сохраняем статус…';
       message.classList.remove('success');
-      const { error: updateError } = await client.from('orders').update({ status:select.value }).eq('id', order.id);
-      if (updateError) {
-        message.textContent = `Не удалось сохранить: ${updateError.message}`;
+      try {
+      const { data: updated, error: updateError } = await client.from('orders').update({ status:requestedStatus }).eq('id', order.id).eq('status', order.status).select('id,status').maybeSingle();
+      if (updateError) throw updateError;
+      if (!updated) {
+        message.textContent = 'Заказ уже изменён или недоступен. Обновите страницу перед повторной сменой статуса.';
         select.value = order.status;
-        select.disabled = false;
         return;
       }
-      order.status = select.value;
+      order.status = updated.status;
+      select.value = updated.status;
       element.dataset.status = order.status;
       element.dispatchEvent(new Event('order-status-saved'));
       filterOrders();
       orderSelect.hidden = order.status !== 'done';
       deleteButton.hidden = order.status !== 'done';
       if (order.status !== 'done') { selectCheckbox.checked = false; selectedOrderIds.delete(order.id); updateBulkOrderActions(); }
-      await sendStatusNotification(order.id, message);
-      select.disabled = false;
+      try { await sendStatusNotification(order.id, message); }
+      catch { message.textContent = 'Статус сохранён, но отправку уведомления подтвердить не удалось.'; }
+      } catch {
+        select.value = order.status;
+        message.textContent = 'Не удалось подтвердить сохранение статуса. Обновите страницу и проверьте результат.';
+      } finally { select.disabled = false; }
     });
     deleteButton.addEventListener('click', async () => {
       if (!window.confirm(`Удалить завершённый заказ #${order.id.slice(0, 8)}? Восстановить его и фотографию будет нельзя.`)) return;
