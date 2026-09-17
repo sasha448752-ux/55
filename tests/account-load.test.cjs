@@ -9,9 +9,10 @@ test('late order response cannot replace orders of a newer account', async () =>
   const pending = [];
   const ordersList = { innerHTML: '', querySelectorAll: () => [] };
   const profile = { elements: { full_name: {}, phone: {}, email: {} } };
+  const refresh = {};
   const context = {
     ordersList, authPanel: {}, customerPanel: {}, window: {},
-    document: { querySelector: selector => selector === '#profile-form' ? profile : {} },
+    document: { querySelector: selector => selector === '#profile-form' ? profile : selector === '#refresh-orders' ? refresh : {} },
     supabaseClient: { from() { return { select() { return this; }, eq() { return this; }, order() { return new Promise(resolve => pending.push(resolve)); } }; } },
     renderOrder: order => order.id, loadOrderPreview() {},
   };
@@ -21,10 +22,18 @@ test('late order response cannot replace orders of a newer account', async () =>
   pending[1]({ data: [{id: 'new-user-order'}] }); await second;
   pending[0]({ data: [{id: 'old-user-order'}] }); await first;
   assert.equal(ordersList.innerHTML, 'new-user-order');
+  profile.elements.full_name.value = 'Unsaved name';
+  const retry = vm.runInContext("showAccount({id:'b'}, true)", context);
+  assert.equal(refresh.disabled, true);
+  refresh.onclick();
+  assert.equal(pending.length, 3);
+  pending[2]({data: []}); await retry;
+  assert.equal(refresh.disabled, false);
+  assert.equal(profile.elements.full_name.value, 'Unsaved name');
   const third = vm.runInContext("showAccount({id:'c'})", context);
   vm.runInContext('++accountLoadVersion;', context);
   ordersList.innerHTML = '';
-  pending[2]({ data: [{id: 'signed-out-order'}] }); await third;
+  pending[3]({ data: [{id: 'signed-out-order'}] }); await third;
   assert.equal(ordersList.innerHTML, '');
 });
 

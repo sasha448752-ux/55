@@ -52,15 +52,22 @@ const loadOrderPreview = async (order, index) => {
   image.src = photo.signedUrl;
 };
 let accountLoadVersion = 0;
-const showAccount = async user => {
+const showAccount = async (user, refreshOnly = false) => {
   const version = ++accountLoadVersion;
+  const refreshButton = document.querySelector('#refresh-orders');
+  refreshButton.disabled = true;
+  refreshButton.onclick = () => {
+    if (!refreshButton.disabled && !customerPanel.hidden) void showAccount(user, true);
+  };
   authPanel.hidden = true;
   customerPanel.hidden = false;
   document.querySelector('#customer-email').textContent = user.email || '';
   const profile = document.querySelector('#profile-form');
-  profile.elements.full_name.value = user.user_metadata?.full_name || '';
-  profile.elements.phone.value = user.user_metadata?.phone || '';
-  profile.elements.email.value = user.email || '';
+  if (!refreshOnly) {
+    profile.elements.full_name.value = user.user_metadata?.full_name || '';
+    profile.elements.phone.value = user.user_metadata?.phone || '';
+    profile.elements.email.value = user.email || '';
+  }
   ordersList.innerHTML = '<p class="empty">Загружаем заказы…</p>';
   let response;
   try {
@@ -69,8 +76,9 @@ const showAccount = async user => {
     response = { error: true };
   }
   if (version !== accountLoadVersion) return;
+  refreshButton.disabled = false;
   const { data, error } = response || {};
-  if (error || !Array.isArray(data)) { ordersList.innerHTML = '<p class="empty">Не удалось загрузить заказы. Обновите страницу или обратитесь в поддержку.</p>'; return; }
+  if (error || !Array.isArray(data)) { ordersList.innerHTML = '<p class="empty">Не удалось загрузить заказы. Нажмите «Обновить заказы» или обратитесь в поддержку.</p>'; return; }
   if (!data.length) { ordersList.innerHTML = '<p class="empty">У вас пока нет заказов. После оформления авторизованным пользователем они появятся здесь.</p>'; return; }
   // Render the order details immediately. Private preview URLs are requested
   // independently, so one large photo never blocks the whole page.
