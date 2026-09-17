@@ -46,7 +46,9 @@ const loadOrderPreview = async (order, index) => {
   frame.replaceChildren(image);
   image.src = photo.signedUrl;
 };
+let accountLoadVersion = 0;
 const showAccount = async user => {
+  const version = ++accountLoadVersion;
   authPanel.hidden = true;
   customerPanel.hidden = false;
   document.querySelector('#customer-email').textContent = user.email || '';
@@ -56,6 +58,7 @@ const showAccount = async user => {
   profile.elements.email.value = user.email || '';
   ordersList.innerHTML = '<p class="empty">Загружаем заказы…</p>';
   const {data, error} = await supabaseClient.from('orders').select('id,created_at,canvas_size,price_kop,status,photo_path,full_name,phone,address,comment').eq('customer_id', user.id).order('created_at',{ascending:false});
+  if (version !== accountLoadVersion) return;
   if (error) { ordersList.innerHTML = '<p class="empty">Не удалось загрузить заказы. Обновите страницу или обратитесь в поддержку.</p>'; return; }
   if (!data.length) { ordersList.innerHTML = '<p class="empty">У вас пока нет заказов. После оформления авторизованным пользователем они появятся здесь.</p>'; return; }
   // Render the order details immediately. Private preview URLs are requested
@@ -95,13 +98,23 @@ document.querySelector('#register-button').addEventListener('click', async () =>
   setMessage('Аккаунт создан. Подтвердите email и затем войдите.', true);
 });
 document.querySelector('#logout-button').addEventListener('click', async () => {
-  await supabaseClient.auth.signOut();
+  ++accountLoadVersion;
+  ordersList.replaceChildren();
+  document.querySelector('#profile-form').reset();
+  document.querySelector('#customer-email').textContent = '';
   customerPanel.hidden = true;
   authPanel.hidden = false;
   authForm.reset();
   setMessage('');
+  try {
+    const { error } = await supabaseClient.auth.signOut();
+    if (error) throw error;
+  } catch { setMessage('Не удалось подтвердить выход. Проверьте подключение и повторите выход после входа в кабинет.'); }
 });
-if (supabaseClient) supabaseClient.auth.getUser().then(({data}) => { if (data.user) showAccount(data.user); });
+if (supabaseClient) {
+  const initialVersion = accountLoadVersion;
+  supabaseClient.auth.getUser().then(({data}) => { if (data.user && initialVersion === accountLoadVersion) showAccount(data.user); });
+}
 
 async function requestPasswordLink(email, button, message) {
   if (!supabaseClient) return;
