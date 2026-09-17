@@ -27,3 +27,22 @@ test('late order response cannot replace orders of a newer account', async () =>
   pending[2]({ data: [{id: 'signed-out-order'}] }); await third;
   assert.equal(ordersList.innerHTML, '');
 });
+
+for (const failure of ['rejected', 'null-data']) {
+  test(`order loading reports ${failure} without leaving a loading indicator`, async () => {
+    const ordersList = { innerHTML: '' };
+    const profile = { elements: { full_name: {}, phone: {}, email: {} } };
+    const context = {
+      ordersList, authPanel: {}, customerPanel: {}, window: {},
+      document: { querySelector: selector => selector === '#profile-form' ? profile : {} },
+      supabaseClient: { from() { return {
+        select() { return this; }, eq() { return this; },
+        order() { return failure === 'rejected' ? Promise.reject(new Error('offline')) : Promise.resolve({data:null}); }
+      }; } }
+    };
+    vm.createContext(context); vm.runInContext(code, context);
+    await vm.runInContext("showAccount({id:'a'})", context);
+    assert.match(ordersList.innerHTML, /Не удалось загрузить заказы/);
+    assert.doesNotMatch(ordersList.innerHTML, /пока нет заказов|Загружаем/);
+  });
+}

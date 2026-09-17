@@ -57,9 +57,15 @@ const showAccount = async user => {
   profile.elements.phone.value = user.user_metadata?.phone || '';
   profile.elements.email.value = user.email || '';
   ordersList.innerHTML = '<p class="empty">Загружаем заказы…</p>';
-  const {data, error} = await supabaseClient.from('orders').select('id,created_at,canvas_size,price_kop,status,photo_path,full_name,phone,address,comment').eq('customer_id', user.id).order('created_at',{ascending:false});
+  let response;
+  try {
+    response = await supabaseClient.from('orders').select('id,created_at,canvas_size,price_kop,status,photo_path,full_name,phone,address,comment').eq('customer_id', user.id).order('created_at',{ascending:false});
+  } catch {
+    response = { error: true };
+  }
   if (version !== accountLoadVersion) return;
-  if (error) { ordersList.innerHTML = '<p class="empty">Не удалось загрузить заказы. Обновите страницу или обратитесь в поддержку.</p>'; return; }
+  const { data, error } = response || {};
+  if (error || !Array.isArray(data)) { ordersList.innerHTML = '<p class="empty">Не удалось загрузить заказы. Обновите страницу или обратитесь в поддержку.</p>'; return; }
   if (!data.length) { ordersList.innerHTML = '<p class="empty">У вас пока нет заказов. После оформления авторизованным пользователем они появятся здесь.</p>'; return; }
   // Render the order details immediately. Private preview URLs are requested
   // independently, so one large photo never blocks the whole page.
