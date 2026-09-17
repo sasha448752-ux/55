@@ -24,11 +24,20 @@ const loadOrderPreview = async (order, index) => {
   if (!order.photo_path) return;
   const frame = document.querySelector(`#order-photo-${index}`);
   if (!frame) return;
-  const { data: photo } = await supabaseClient.storage.from('order-photos').createSignedUrl(order.photo_path, 3600);
-  if (!photo?.signedUrl || !frame.isConnected) {
-    frame?.classList.remove('is-loading');
-    frame?.classList.add('order-photo-empty');
-    if (frame) frame.textContent = 'Фото пока недоступно';
+  const unavailable = () => {
+    if (!frame.isConnected) return;
+    frame.classList.remove('is-loading');
+    frame.classList.add('order-photo-empty');
+    frame.textContent = 'Фото пока недоступно';
+  };
+  let photo;
+  try {
+    const result = await supabaseClient.storage.from('order-photos').createSignedUrl(order.photo_path, 3600);
+    if (!result.error) photo = result.data;
+  } catch { unavailable(); return; }
+  if (!frame.isConnected) return;
+  if (!photo?.signedUrl) {
+    unavailable();
     return;
   }
   const image = new Image();
@@ -38,11 +47,7 @@ const loadOrderPreview = async (order, index) => {
   image.decoding = 'async';
   if (index === 0) image.fetchPriority = 'high';
   image.onload = () => frame.classList.remove('is-loading');
-  image.onerror = () => {
-    frame.classList.remove('is-loading');
-    frame.classList.add('order-photo-empty');
-    frame.textContent = 'Фото пока недоступно';
-  };
+  image.onerror = unavailable;
   frame.replaceChildren(image);
   image.src = photo.signedUrl;
 };
