@@ -61,6 +61,9 @@ const showAccount = async user => {
   // Render the order details immediately. Private preview URLs are requested
   // independently, so one large photo never blocks the whole page.
   ordersList.innerHTML = data.map(renderOrder).join('');
+  ordersList.querySelectorAll('article.order details').forEach((details, index) => {
+    window.CanvasCustomerOrderDetails?.attach(details, supabaseClient, data[index].id);
+  });
   void Promise.all(data.map(loadOrderPreview));
 };
 
