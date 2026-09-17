@@ -12,6 +12,12 @@ body{background:#f3f4ef;color:#28332d}main{width:100%!important;padding:0;margin
 .studio-sidebar{overflow-y:auto}
 .studio-sidebar nav button,.studio-summary span,.status-row{font-size:14px}
 .studio-summary small{font-size:12px}
+input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible{outline:3px solid #73531d;outline-offset:3px}
+#login-form label{display:block;margin-top:16px;font-weight:700}
+#login-form input{margin-top:6px}
+#admin-chat-form{flex-wrap:wrap}
+#admin-chat-form .admin-message-label{flex-basis:100%;font-weight:700}
+#admin-chat-form textarea{font-size:16px}
 @media(max-width:600px){
   .studio-content .order{grid-template-columns:72px minmax(0,1fr)}
   .studio-content .order img{width:72px;height:64px}
