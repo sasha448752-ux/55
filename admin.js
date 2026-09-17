@@ -124,6 +124,7 @@ async function loadOrders() {
       }
       order.status = select.value;
       element.dataset.status = order.status;
+      element.dispatchEvent(new Event('order-status-saved'));
       filterOrders();
       orderSelect.hidden = order.status !== 'done';
       deleteButton.hidden = order.status !== 'done';
@@ -148,6 +149,7 @@ async function loadOrders() {
         deleteButton.disabled = false;
       }
     });
+    if (window.CanvasOrderDetails) window.CanvasOrderDetails.attach(element, client, order.id);
     list.append(element);
     filterOrders();
   }

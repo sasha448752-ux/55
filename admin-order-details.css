@@ -1,0 +1,9 @@
+.order-details{grid-column:1/-1;min-width:0;border-top:1px solid #dfe4d9;padding-top:14px}
+.order-details summary{cursor:pointer;font-weight:600;line-height:1.5}
+.order-details h3{font-size:16px;margin:22px 0 12px}
+.order-details label{display:block;font-size:14px;line-height:1.5;margin:12px 0}
+.order-details textarea{display:block;width:100%;min-height:90px;resize:vertical;padding:10px;font:inherit;border:1px solid #ccc;border-radius:4px}
+.order-details ul{padding-left:20px;max-height:300px;overflow:auto}
+.order-details li{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.6;margin:10px 0}
+.order-details button:disabled{opacity:.6;cursor:wait}
+.order-details summary:focus-visible{outline:3px solid #b08a55;outline-offset:3px}
